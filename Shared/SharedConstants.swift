@@ -1,7 +1,7 @@
 import Foundation
 
 enum SharedConstants {
-  static let appGroupIdentifier = "group.ch.lkmc.opencodequota"
+  static let sharedDataDirectoryName = "opencodequota"
   static let snapshotFileName = "quota-snapshot.json"
   static let settingsFileName = "quota-settings.json"
   static let widgetKind = "OpenCodeQuotaWidget"
@@ -23,18 +23,19 @@ enum SharedConstants {
 
 enum SharedPaths {
   static func appGroupDirectory() throws -> URL {
-    guard
-      let url = FileManager.default.containerURL(
-        forSecurityApplicationGroupIdentifier: SharedConstants.appGroupIdentifier
-      )
-    else {
+    let home = NSHomeDirectory()
+    guard !home.isEmpty else {
       throw NSError(
         domain: "OpenCodeQuota",
         code: 1001,
-        userInfo: [NSLocalizedDescriptionKey: "Unable to resolve App Group container URL."]
+        userInfo: [NSLocalizedDescriptionKey: "Unable to resolve user home directory."]
       )
     }
-    return url
+
+    return URL(fileURLWithPath: home, isDirectory: true)
+      .appendingPathComponent(".local", isDirectory: true)
+      .appendingPathComponent("share", isDirectory: true)
+      .appendingPathComponent(SharedConstants.sharedDataDirectoryName, isDirectory: true)
   }
 
   static func snapshotFileURL() throws -> URL {

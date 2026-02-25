@@ -6,14 +6,14 @@
   <true/>
   <key>com.apple.security.network.client</key>
   <true/>
-  <key>com.apple.security.application-groups</key>
-  <array>
-    <string>group.ch.lkmc.opencodequota</string>
-  </array>
   <key>com.apple.security.files.user-selected.read-only</key>
   <true/>
   <key>com.apple.security.files.bookmarks.app-scope</key>
   <true/>
+  <key>com.apple.security.temporary-exception.files.home-relative-path.read-write</key>
+  <array>
+    <string>.local/share/opencodequota/</string>
+  </array>
   <key>com.apple.security.temporary-exception.files.home-relative-path.read-only</key>
   <array>
     <string>.local/share/opencode/</string>

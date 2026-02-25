@@ -23,6 +23,10 @@ final class AppModel: ObservableObject {
   private let refreshService: RefreshService
   private let credentialLoader: OpenCodeCredentialLoader
   private let sandboxAccess: OpenCodeSandboxAccess
+  private var resolvedAppGroupStores = false
+  private var cachedAppGroupSettingsStore: SettingsStore?
+  private var cachedAppGroupSnapshotStore: SnapshotStore?
+  private var widgetSyncBlocked = false
 
   init() {
     let baseDirectory = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first
@@ -87,9 +91,11 @@ final class AppModel: ObservableObject {
 
       try settingsStore.save(settings)
       let widgetSyncReady = syncSettingsToWidgetStore(settings)
-      reloadWidgetTimelines()
+      if widgetSyncReady {
+        reloadWidgetTimelines()
+      }
       if !widgetSyncReady {
-        statusMessage = "Settings saved locally. Widget sync unavailable (App Group access missing)."
+        statusMessage = "Settings saved locally. Widget sync unavailable."
       } else if showSuccessMessage {
         statusMessage = "Configuration saved"
       }
@@ -99,7 +105,6 @@ final class AppModel: ObservableObject {
   }
 
   func refreshNow() async {
-    saveConfiguration()
     isRefreshing = true
     defer { isRefreshing = false }
 
@@ -116,12 +121,14 @@ final class AppModel: ObservableObject {
     do {
       let refreshed = try await refreshService.refresh(configurations: enabledConfigs)
       let widgetSyncReady = syncSnapshotToWidgetStore(refreshed)
-      reloadWidgetTimelines()
+      if widgetSyncReady {
+        reloadWidgetTimelines()
+      }
       snapshot = refreshed
       if widgetSyncReady {
         statusMessage = "Refreshed \(refreshed.providers.count) provider(s), \(refreshed.failures.count) failure(s)"
       } else {
-        statusMessage = "Refreshed \(refreshed.providers.count) provider(s), \(refreshed.failures.count) failure(s). Widget sync unavailable (App Group access missing)."
+        statusMessage = "Refreshed \(refreshed.providers.count) provider(s), \(refreshed.failures.count) failure(s). Widget sync unavailable."
       }
     } catch {
       statusMessage = "Refresh failed: \(error.localizedDescription)"
@@ -333,36 +340,58 @@ final class AppModel: ObservableObject {
 
   @discardableResult
   private func syncSettingsToWidgetStore(_ settings: AppSettings) -> Bool {
+    guard !widgetSyncBlocked else { return false }
     guard let appGroupStore = appGroupSettingsStore() else { return false }
 
     do {
       try appGroupStore.save(settings)
       return true
     } catch {
+      widgetSyncBlocked = true
       return false
     }
   }
 
   @discardableResult
   private func syncSnapshotToWidgetStore(_ snapshot: QuotaSnapshot) -> Bool {
+    guard !widgetSyncBlocked else { return false }
     guard let appGroupStore = appGroupSnapshotStore() else { return false }
 
     do {
       try appGroupStore.save(snapshot)
       return true
     } catch {
+      widgetSyncBlocked = true
       return false
     }
   }
 
   private func appGroupSettingsStore() -> SettingsStore? {
-    guard let url = try? SharedPaths.settingsFileURL() else { return nil }
-    return SettingsStore(fileURL: url)
+    resolveAppGroupStoresIfNeeded()
+    return cachedAppGroupSettingsStore
   }
 
   private func appGroupSnapshotStore() -> SnapshotStore? {
-    guard let url = try? SharedPaths.snapshotFileURL() else { return nil }
-    return SnapshotStore(fileURL: url)
+    resolveAppGroupStoresIfNeeded()
+    return cachedAppGroupSnapshotStore
+  }
+
+  private func resolveAppGroupStoresIfNeeded() {
+    guard !resolvedAppGroupStores else {
+      return
+    }
+    resolvedAppGroupStores = true
+
+    guard
+      let settingsURL = try? SharedPaths.settingsFileURL(),
+      let snapshotURL = try? SharedPaths.snapshotFileURL()
+    else {
+      widgetSyncBlocked = true
+      return
+    }
+
+    cachedAppGroupSettingsStore = SettingsStore(fileURL: settingsURL)
+    cachedAppGroupSnapshotStore = SnapshotStore(fileURL: snapshotURL)
   }
 
   private func reloadWidgetTimelines() {
