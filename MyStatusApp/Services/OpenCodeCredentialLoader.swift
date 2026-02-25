@@ -70,9 +70,16 @@ struct ProviderCredentialStatus: Identifiable, Hashable {
   var id: String { provider.rawValue }
 }
 
+struct OpenCodeAuthAccessStatus: Hashable {
+  let granted: Bool
+  let summary: String
+  let detail: String
+}
+
 struct OpenCodeCredentialLoadResult {
   let runtimeConfigurations: [ProviderRuntimeConfiguration]
   let statuses: [ProviderCredentialStatus]
+  let authAccess: OpenCodeAuthAccessStatus
 }
 
 final class OpenCodeCredentialLoader {
@@ -99,6 +106,8 @@ final class OpenCodeCredentialLoader {
       antigravityCandidates(),
       label: "antigravity-accounts.json"
     )
+
+    let authAccess = authAccessStatus(from: authLookup)
     let copilotPATLookup = loadJSONFromCandidates(
       copilotPATCandidates(),
       label: "copilot-quota-token.json"
@@ -175,7 +184,35 @@ final class OpenCodeCredentialLoader {
       )
     }
 
-    return OpenCodeCredentialLoadResult(runtimeConfigurations: configurations, statuses: statuses)
+    return OpenCodeCredentialLoadResult(
+      runtimeConfigurations: configurations,
+      statuses: statuses,
+      authAccess: authAccess
+    )
+  }
+
+  private func authAccessStatus(from lookup: JSONLookup) -> OpenCodeAuthAccessStatus {
+    if lookup.object != nil {
+      return OpenCodeAuthAccessStatus(
+        granted: true,
+        summary: "OpenCode auth access granted",
+        detail: lookup.diagnostics
+      )
+    }
+
+    if lookup.sourceSummary == "Existing auth.json file found" {
+      return OpenCodeAuthAccessStatus(
+        granted: false,
+        summary: "auth.json exists but is not readable in this app sandbox",
+        detail: "Use Grant File Access and select ~/.local/share/opencode/auth.json. \(lookup.diagnostics)"
+      )
+    }
+
+    return OpenCodeAuthAccessStatus(
+      granted: false,
+      summary: "No readable auth.json found",
+      detail: "Expected location: ~/.local/share/opencode/auth.json. \(lookup.diagnostics)"
+    )
   }
 
   private func mergeDetails(parseDetail: String, lookupDiagnostics: String) -> String {

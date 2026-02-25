@@ -155,24 +155,185 @@ public struct ProviderSettings: Codable, Hashable, Sendable {
   }
 }
 
+public enum WidgetBackgroundStyle: String, CaseIterable, Codable, Sendable {
+  case system
+  case graphite
+  case ocean
+  case forest
+  case sunset
+
+  public var displayName: String {
+    switch self {
+    case .system:
+      return "System"
+    case .graphite:
+      return "Graphite"
+    case .ocean:
+      return "Ocean"
+    case .forest:
+      return "Forest"
+    case .sunset:
+      return "Sunset"
+    }
+  }
+}
+
+public enum WidgetRingPalette: String, CaseIterable, Codable, Sendable {
+  case traffic
+  case cool
+  case warm
+  case monochrome
+
+  public var displayName: String {
+    switch self {
+    case .traffic:
+      return "Traffic Light"
+    case .cool:
+      return "Cool"
+    case .warm:
+      return "Warm"
+    case .monochrome:
+      return "Monochrome"
+    }
+  }
+}
+
+public struct WidgetStyleSettings: Codable, Hashable, Sendable {
+  public var showBackground: Bool
+  public var backgroundStyle: WidgetBackgroundStyle
+  public var ringPalette: WidgetRingPalette
+
+  public init(
+    showBackground: Bool = true,
+    backgroundStyle: WidgetBackgroundStyle = .system,
+    ringPalette: WidgetRingPalette = .traffic
+  ) {
+    self.showBackground = showBackground
+    self.backgroundStyle = backgroundStyle
+    self.ringPalette = ringPalette
+  }
+
+  public static var `default`: WidgetStyleSettings {
+    WidgetStyleSettings()
+  }
+}
+
+public struct ProviderStyleSettings: Codable, Hashable, Sendable {
+  public var provider: QuotaProvider
+  public var useCustomStyle: Bool
+  public var style: WidgetStyleSettings
+
+  public init(
+    provider: QuotaProvider,
+    useCustomStyle: Bool = false,
+    style: WidgetStyleSettings = .default
+  ) {
+    self.provider = provider
+    self.useCustomStyle = useCustomStyle
+    self.style = style
+  }
+
+  public static func defaultValue(
+    for provider: QuotaProvider,
+    fallbackStyle: WidgetStyleSettings = .default
+  ) -> ProviderStyleSettings {
+    ProviderStyleSettings(provider: provider, useCustomStyle: false, style: fallbackStyle)
+  }
+}
+
 public struct AppSettings: Codable, Hashable, Sendable {
   public var refreshIntervalMinutes: Int
   public var providers: [ProviderSettings]
+  public var widgetStyle: WidgetStyleSettings
+  public var providerStyleSettings: [ProviderStyleSettings]
 
-  public init(refreshIntervalMinutes: Int = 30, providers: [ProviderSettings]) {
+  public init(
+    refreshIntervalMinutes: Int = 30,
+    providers: [ProviderSettings],
+    widgetStyle: WidgetStyleSettings = .default,
+    providerStyleSettings: [ProviderStyleSettings] = []
+  ) {
     self.refreshIntervalMinutes = refreshIntervalMinutes
-    self.providers = providers
+    self.providers = AppSettings.normalizedProviderSettings(providers)
+    self.widgetStyle = widgetStyle
+    self.providerStyleSettings = AppSettings.normalizedProviderStyleSettings(
+      providerStyleSettings.isEmpty ? AppSettings.defaultProviderStyleSettings() : providerStyleSettings,
+      fallbackStyle: widgetStyle
+    )
   }
 
   public static var `default`: AppSettings {
     AppSettings(
       refreshIntervalMinutes: 30,
-      providers: QuotaProvider.allCases.map { ProviderSettings(provider: $0, isEnabled: true) }
+      providers: QuotaProvider.allCases.map { ProviderSettings(provider: $0, isEnabled: true) },
+      widgetStyle: .default,
+      providerStyleSettings: defaultProviderStyleSettings()
     )
   }
 
   public func isEnabled(_ provider: QuotaProvider) -> Bool {
     providers.first(where: { $0.provider == provider })?.isEnabled ?? false
+  }
+
+  public func styleOverride(for provider: QuotaProvider) -> ProviderStyleSettings {
+    providerStyleSettings.first(where: { $0.provider == provider })
+      ?? ProviderStyleSettings.defaultValue(for: provider, fallbackStyle: widgetStyle)
+  }
+
+  private enum CodingKeys: String, CodingKey {
+    case refreshIntervalMinutes
+    case providers
+    case widgetStyle
+    case providerStyleSettings
+  }
+
+  public init(from decoder: Decoder) throws {
+    let container = try decoder.container(keyedBy: CodingKeys.self)
+
+    refreshIntervalMinutes = try container.decodeIfPresent(Int.self, forKey: .refreshIntervalMinutes) ?? 30
+
+    let decodedProviders = try container.decodeIfPresent([ProviderSettings].self, forKey: .providers)
+      ?? QuotaProvider.allCases.map { ProviderSettings(provider: $0, isEnabled: true) }
+    providers = AppSettings.normalizedProviderSettings(decodedProviders)
+
+    widgetStyle = try container.decodeIfPresent(WidgetStyleSettings.self, forKey: .widgetStyle) ?? .default
+
+    let decodedStyleSettings = try container.decodeIfPresent(
+      [ProviderStyleSettings].self,
+      forKey: .providerStyleSettings
+    ) ?? AppSettings.defaultProviderStyleSettings()
+    providerStyleSettings = AppSettings.normalizedProviderStyleSettings(
+      decodedStyleSettings,
+      fallbackStyle: widgetStyle
+    )
+  }
+
+  public func encode(to encoder: Encoder) throws {
+    var container = encoder.container(keyedBy: CodingKeys.self)
+    try container.encode(refreshIntervalMinutes, forKey: .refreshIntervalMinutes)
+    try container.encode(providers, forKey: .providers)
+    try container.encode(widgetStyle, forKey: .widgetStyle)
+    try container.encode(providerStyleSettings, forKey: .providerStyleSettings)
+  }
+
+  private static func defaultProviderStyleSettings() -> [ProviderStyleSettings] {
+    QuotaProvider.allCases.map { ProviderStyleSettings.defaultValue(for: $0) }
+  }
+
+  private static func normalizedProviderSettings(_ values: [ProviderSettings]) -> [ProviderSettings] {
+    QuotaProvider.allCases.map { provider in
+      values.first(where: { $0.provider == provider }) ?? ProviderSettings(provider: provider, isEnabled: true)
+    }
+  }
+
+  private static func normalizedProviderStyleSettings(
+    _ values: [ProviderStyleSettings],
+    fallbackStyle: WidgetStyleSettings
+  ) -> [ProviderStyleSettings] {
+    QuotaProvider.allCases.map { provider in
+      values.first(where: { $0.provider == provider })
+        ?? ProviderStyleSettings.defaultValue(for: provider, fallbackStyle: fallbackStyle)
+    }
   }
 }
 

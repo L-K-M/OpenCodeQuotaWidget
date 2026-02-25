@@ -9,7 +9,7 @@ struct OpenCodeQuotaWidget: Widget {
     StaticConfiguration(kind: kind, provider: QuotaTimelineProvider()) { entry in
       DashboardWidgetRootView(entry: entry)
         .containerBackground(for: .widget) {
-          Color.clear
+          widgetBackground(for: entry, provider: nil)
         }
     }
     .configurationDisplayName("OpenCodeQuota Dashboard")
@@ -21,7 +21,7 @@ struct OpenCodeQuotaWidget: Widget {
 struct OpenAIQuotaWidget: Widget {
   var body: some WidgetConfiguration {
     providerWidgetConfiguration(
-      kind: "OpenCodeQuotaWidget.openai",
+      kind: SharedConstants.openAIWidgetKind,
       provider: .openAI,
       displayName: "OpenAI Rings",
       widgetDescription: "OpenAI short and long window limits."
@@ -32,7 +32,7 @@ struct OpenAIQuotaWidget: Widget {
 struct ZhipuQuotaWidget: Widget {
   var body: some WidgetConfiguration {
     providerWidgetConfiguration(
-      kind: "OpenCodeQuotaWidget.zhipu",
+      kind: SharedConstants.zhipuWidgetKind,
       provider: .zhipu,
       displayName: "Zhipu AI Rings",
       widgetDescription: "Zhipu token and quota limits."
@@ -43,7 +43,7 @@ struct ZhipuQuotaWidget: Widget {
 struct ZAIQuotaWidget: Widget {
   var body: some WidgetConfiguration {
     providerWidgetConfiguration(
-      kind: "OpenCodeQuotaWidget.zai",
+      kind: SharedConstants.zaiWidgetKind,
       provider: .zai,
       displayName: "Z.ai Rings",
       widgetDescription: "Z.ai token and quota limits."
@@ -54,7 +54,7 @@ struct ZAIQuotaWidget: Widget {
 struct GoogleQuotaWidget: Widget {
   var body: some WidgetConfiguration {
     providerWidgetConfiguration(
-      kind: "OpenCodeQuotaWidget.google",
+      kind: SharedConstants.googleWidgetKind,
       provider: .googleAntigravity,
       displayName: "Google Rings",
       widgetDescription: "Google Antigravity model limits."
@@ -65,7 +65,7 @@ struct GoogleQuotaWidget: Widget {
 struct CopilotQuotaWidget: Widget {
   var body: some WidgetConfiguration {
     providerWidgetConfiguration(
-      kind: "OpenCodeQuotaWidget.copilot",
+      kind: SharedConstants.copilotWidgetKind,
       provider: .gitHubCopilot,
       displayName: "Copilot Rings",
       widgetDescription: "GitHub Copilot quota limits."
@@ -82,7 +82,7 @@ private func providerWidgetConfiguration(
   StaticConfiguration(kind: kind, provider: QuotaTimelineProvider()) { entry in
     ProviderSmallQuotaView(entry: entry, provider: provider)
       .containerBackground(for: .widget) {
-        Color.clear
+        widgetBackground(for: entry, provider: provider)
       }
   }
   .configurationDisplayName(displayName)
@@ -114,11 +114,13 @@ private struct OverviewSmallQuotaView: View {
         .foregroundStyle(.secondary)
 
       if let usage = featuredProvider {
+        let style = entry.style(for: usage.provider)
+
         Text(usage.title)
           .font(.caption.weight(.semibold))
           .lineLimit(1)
 
-        ConcentricQuotaChart(metrics: chartMetrics(for: usage))
+        ConcentricQuotaChart(metrics: chartMetrics(for: usage), ringPalette: style.ringPalette)
           .frame(maxWidth: .infinity, minHeight: 88, maxHeight: .infinity)
 
         Text(metricSummary(for: usage))
@@ -167,7 +169,10 @@ private struct ProviderSmallQuotaView: View {
         .lineLimit(1)
 
       if let usage = providerUsage {
-        ConcentricQuotaChart(metrics: chartMetrics(for: usage))
+        ConcentricQuotaChart(
+          metrics: chartMetrics(for: usage),
+          ringPalette: entry.style(for: provider).ringPalette
+        )
           .frame(maxWidth: .infinity, minHeight: 96, maxHeight: .infinity)
 
         Text(metricSummary(for: usage))
@@ -211,7 +216,7 @@ private struct MediumCompactQuotaView: View {
 
       if let snapshot = entry.snapshot, !snapshot.providers.isEmpty {
         ForEach(sortedProviders(snapshot.providers).prefix(6)) { usage in
-          CompactProviderUsageRow(usage: usage)
+          CompactProviderUsageRow(usage: usage, ringPalette: entry.style(for: usage.provider).ringPalette)
         }
 
         if !snapshot.failures.isEmpty {
@@ -241,6 +246,7 @@ private struct MediumCompactQuotaView: View {
 
 private struct CompactProviderUsageRow: View {
   let usage: ProviderUsage
+  let ringPalette: WidgetRingPalette
 
   var body: some View {
     HStack(spacing: 6) {
@@ -249,7 +255,11 @@ private struct CompactProviderUsageRow: View {
         .lineLimit(1)
         .frame(width: 58, alignment: .leading)
 
-      MiniProgressBar(percent: metric?.remainingPercent, unlimited: metric?.isUnlimited ?? false)
+      MiniProgressBar(
+        percent: metric?.remainingPercent,
+        unlimited: metric?.isUnlimited ?? false,
+        ringPalette: ringPalette
+      )
         .frame(height: 5)
 
       Text(percentText(for: metric))
@@ -281,6 +291,7 @@ private struct CompactProviderUsageRow: View {
 
 private struct ConcentricQuotaChart: View {
   let metrics: [UsageMetric]
+  let ringPalette: WidgetRingPalette
 
   var body: some View {
     GeometryReader { proxy in
@@ -290,12 +301,20 @@ private struct ConcentricQuotaChart: View {
 
       ZStack {
         if let outerMetric {
-          CircularQuotaRing(metric: outerMetric, lineWidth: max(8, side * 0.12))
+          CircularQuotaRing(
+            metric: outerMetric,
+            lineWidth: max(8, side * 0.12),
+            ringPalette: ringPalette
+          )
             .frame(width: side, height: side)
         }
 
         if let innerMetric {
-          CircularQuotaRing(metric: innerMetric, lineWidth: max(6, side * 0.1))
+          CircularQuotaRing(
+            metric: innerMetric,
+            lineWidth: max(6, side * 0.1),
+            ringPalette: ringPalette
+          )
             .frame(width: side * 0.64, height: side * 0.64)
         }
 
@@ -326,6 +345,7 @@ private struct ConcentricQuotaChart: View {
 private struct CircularQuotaRing: View {
   let metric: UsageMetric
   let lineWidth: CGFloat
+  let ringPalette: WidgetRingPalette
 
   var body: some View {
     ZStack {
@@ -335,7 +355,7 @@ private struct CircularQuotaRing: View {
       Circle()
         .trim(from: 0, to: progress)
         .stroke(
-          ringColor(for: metric),
+          ringColor(for: metric, palette: ringPalette),
           style: StrokeStyle(lineWidth: lineWidth, lineCap: .round)
         )
         .rotationEffect(.degrees(-90))
@@ -354,6 +374,7 @@ private struct CircularQuotaRing: View {
 private struct MiniProgressBar: View {
   let percent: Int?
   let unlimited: Bool
+  let ringPalette: WidgetRingPalette
 
   var body: some View {
     GeometryReader { proxy in
@@ -363,7 +384,7 @@ private struct MiniProgressBar: View {
           .fill(Color.white.opacity(0.16))
 
         if unlimited {
-          Capsule().fill(Color.blue.opacity(0.85))
+          Capsule().fill(unlimitedColor(for: ringPalette))
         } else {
           Capsule()
             .fill(progressColor)
@@ -374,10 +395,7 @@ private struct MiniProgressBar: View {
   }
 
   private var progressColor: Color {
-    let value = percent ?? 0
-    if value >= 70 { return .green }
-    if value >= 40 { return .yellow }
-    return .red
+    ringColor(for: percent ?? 0, palette: ringPalette)
   }
 }
 
@@ -413,13 +431,84 @@ private func percentText(for metric: UsageMetric?) -> String {
   return "--"
 }
 
-private func ringColor(for metric: UsageMetric) -> Color {
+@ViewBuilder
+private func widgetBackground(for entry: QuotaEntry, provider: QuotaProvider?) -> some View {
+  let style = entry.style(for: provider)
+  if style.showBackground {
+    style.backgroundStyle.color.opacity(0.30)
+  } else {
+    Color.clear
+  }
+}
+
+private func ringColor(for metric: UsageMetric, palette: WidgetRingPalette) -> Color {
   if metric.isUnlimited {
-    return .blue
+    return unlimitedColor(for: palette)
   }
 
-  let value = metric.remainingPercent ?? 0
-  if value >= 70 { return .green }
-  if value >= 40 { return .yellow }
-  return .red
+  return ringColor(for: metric.remainingPercent ?? 0, palette: palette)
+}
+
+private func ringColor(for remainingPercent: Int, palette: WidgetRingPalette) -> Color {
+  let value = max(0, min(100, remainingPercent))
+
+  switch palette {
+  case .traffic:
+    if value >= 70 { return .green }
+    if value >= 40 { return .yellow }
+    return .red
+  case .cool:
+    if value >= 70 { return Color(red: 0.16, green: 0.84, blue: 0.95) }
+    if value >= 40 { return Color(red: 0.20, green: 0.58, blue: 0.98) }
+    return Color(red: 0.30, green: 0.42, blue: 0.98)
+  case .warm:
+    if value >= 70 { return Color(red: 0.96, green: 0.66, blue: 0.28) }
+    if value >= 40 { return Color(red: 0.96, green: 0.49, blue: 0.21) }
+    return Color(red: 0.95, green: 0.31, blue: 0.24)
+  case .monochrome:
+    if value >= 70 { return Color.white.opacity(0.95) }
+    if value >= 40 { return Color.white.opacity(0.75) }
+    return Color.white.opacity(0.55)
+  }
+}
+
+private func unlimitedColor(for palette: WidgetRingPalette) -> Color {
+  switch palette {
+  case .traffic:
+    return .blue
+  case .cool:
+    return Color(red: 0.47, green: 0.80, blue: 0.99)
+  case .warm:
+    return Color(red: 0.98, green: 0.77, blue: 0.36)
+  case .monochrome:
+    return Color.white.opacity(0.90)
+  }
+}
+
+private extension QuotaEntry {
+  func style(for provider: QuotaProvider?) -> WidgetStyleSettings {
+    guard let provider else {
+      return settings.widgetStyle
+    }
+
+    let override = settings.styleOverride(for: provider)
+    return override.useCustomStyle ? override.style : settings.widgetStyle
+  }
+}
+
+private extension WidgetBackgroundStyle {
+  var color: Color {
+    switch self {
+    case .system:
+      return Color.black.opacity(0.08)
+    case .graphite:
+      return Color(red: 0.20, green: 0.22, blue: 0.28)
+    case .ocean:
+      return Color(red: 0.16, green: 0.28, blue: 0.44)
+    case .forest:
+      return Color(red: 0.16, green: 0.32, blue: 0.24)
+    case .sunset:
+      return Color(red: 0.47, green: 0.24, blue: 0.22)
+    }
+  }
 }

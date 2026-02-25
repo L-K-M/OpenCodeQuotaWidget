@@ -2,13 +2,18 @@ import Foundation
 import SwiftUI
 import AppKit
 import UniformTypeIdentifiers
+import WidgetKit
 import QuotaCore
 
 @MainActor
 final class AppModel: ObservableObject {
   @Published var refreshIntervalMinutes: Int = 30
-  @Published var providerEnabled: [QuotaProvider: Bool]
+  @Published var widgetStyle: WidgetStyleSettings = .default
+  @Published var providerStyleSettings: [QuotaProvider: ProviderStyleSettings]
   @Published var credentialStatuses: [ProviderCredentialStatus] = []
+  @Published var authAccessGranted = false
+  @Published var authAccessSummary = "OpenCode auth access not checked yet"
+  @Published var authAccessDetail = ""
   @Published var snapshot: QuotaSnapshot?
   @Published var statusMessage: String = ""
   @Published var isRefreshing = false
@@ -45,79 +50,103 @@ final class AppModel: ObservableObject {
     )
     self.sandboxAccess = sandboxAccess
     self.credentialLoader = OpenCodeCredentialLoader(sandboxAccess: sandboxAccess)
-    self.providerEnabled = Dictionary(uniqueKeysWithValues: QuotaProvider.allCases.map { ($0, true) })
+    self.providerStyleSettings = Dictionary(
+      uniqueKeysWithValues: QuotaProvider.allCases.map {
+        ($0, ProviderStyleSettings.defaultValue(for: $0))
+      }
+    )
   }
 
   func bootstrap() async {
     await loadConfiguration()
 
     do {
-      snapshot = try snapshotStore.load()
+      snapshot = try loadSnapshotFromPreferredStore()
     } catch {
       statusMessage = "Could not load snapshot: \(error.localizedDescription)"
     }
 
     reloadCredentialStatuses()
+    let settingsSynced = syncSettingsToWidgetStore(currentSettings())
+    var snapshotSynced = true
+    if let snapshot {
+      snapshotSynced = syncSnapshotToWidgetStore(snapshot)
+    }
+    if !settingsSynced || !snapshotSynced {
+      statusMessage = "Widget sync unavailable (App Group access missing)."
+    }
+    reloadWidgetTimelines()
   }
 
   func loadConfiguration() async {
     let settings: AppSettings
     do {
-      settings = try settingsStore.load()
+      settings = try loadSettingsFromPreferredStore()
     } catch {
       settings = .default
       statusMessage = "Could not load settings. Using defaults."
     }
 
     refreshIntervalMinutes = max(15, settings.refreshIntervalMinutes)
-    providerEnabled = Dictionary(
+    widgetStyle = settings.widgetStyle
+    providerStyleSettings = Dictionary(
       uniqueKeysWithValues: QuotaProvider.allCases.map { provider in
-        (provider, settings.isEnabled(provider))
+        (provider, settings.styleOverride(for: provider))
       }
     )
   }
 
-  func saveConfiguration() async {
+  func saveConfiguration(showSuccessMessage: Bool = false) {
     do {
-      let settings = AppSettings(
-        refreshIntervalMinutes: refreshIntervalMinutes,
-        providers: QuotaProvider.allCases.map {
-          ProviderSettings(provider: $0, isEnabled: providerEnabled[$0] ?? true)
-        }
-      )
+      let settings = currentSettings()
 
       try settingsStore.save(settings)
-      statusMessage = "Configuration saved"
+      let widgetSyncReady = syncSettingsToWidgetStore(settings)
+      reloadWidgetTimelines()
+      if !widgetSyncReady {
+        statusMessage = "Settings saved locally. Widget sync unavailable (App Group access missing)."
+      } else if showSuccessMessage {
+        statusMessage = "Configuration saved"
+      }
     } catch {
       statusMessage = "Save failed: \(error.localizedDescription)"
     }
   }
 
   func refreshNow() async {
-    await saveConfiguration()
+    saveConfiguration()
     isRefreshing = true
     defer { isRefreshing = false }
 
-    let loaded = credentialLoader.load(providerEnabled: providerEnabled)
+    let loaded = credentialLoader.load(providerEnabled: allProvidersEnabled())
     credentialStatuses = loaded.statuses
+    applyAuthAccess(loaded.authAccess)
 
     let enabledConfigs = loaded.runtimeConfigurations.filter(\.isEnabled)
     guard !enabledConfigs.isEmpty else {
-      statusMessage = "No enabled providers with credentials found in OpenCode config files."
+      statusMessage = "No providers with readable credentials found in OpenCode config files."
       return
     }
 
     do {
-      let refreshed = try await refreshService.refresh(configurations: loaded.runtimeConfigurations)
+      let refreshed = try await refreshService.refresh(configurations: enabledConfigs)
+      let widgetSyncReady = syncSnapshotToWidgetStore(refreshed)
+      reloadWidgetTimelines()
       snapshot = refreshed
-      statusMessage = "Refreshed \(refreshed.providers.count) provider(s), \(refreshed.failures.count) failure(s)"
+      if widgetSyncReady {
+        statusMessage = "Refreshed \(refreshed.providers.count) provider(s), \(refreshed.failures.count) failure(s)"
+      } else {
+        statusMessage = "Refreshed \(refreshed.providers.count) provider(s), \(refreshed.failures.count) failure(s). Widget sync unavailable (App Group access missing)."
+      }
     } catch {
       statusMessage = "Refresh failed: \(error.localizedDescription)"
     }
   }
 
   func reloadCredentialStatuses() {
-    credentialStatuses = credentialLoader.load(providerEnabled: providerEnabled).statuses
+    let loaded = credentialLoader.load(providerEnabled: allProvidersEnabled())
+    credentialStatuses = loaded.statuses
+    applyAuthAccess(loaded.authAccess)
   }
 
   func grantOpenCodeFileAccess() {
@@ -152,6 +181,7 @@ final class AppModel: ObservableObject {
     }
 
     reloadCredentialStatuses()
+    saveConfiguration()
 
     if saved > 0, issues.isEmpty {
       statusMessage = "Granted access to \(saved) OpenCode config file(s)."
@@ -162,19 +192,219 @@ final class AppModel: ObservableObject {
     } else {
       statusMessage = "No matching OpenCode config files selected."
     }
+
+    if saved > 0 {
+      Task {
+        await refreshNow()
+      }
+    }
   }
 
-  func enabledBinding(for provider: QuotaProvider) -> Binding<Bool> {
+  func refreshIntervalBinding() -> Binding<Int> {
     Binding(
-      get: { self.providerEnabled[provider] ?? true },
+      get: { self.refreshIntervalMinutes },
       set: { newValue in
-        self.providerEnabled[provider] = newValue
-        self.reloadCredentialStatuses()
+        self.refreshIntervalMinutes = max(15, newValue)
+        self.saveConfiguration()
+      }
+    )
+  }
+
+  func widgetShowBackgroundBinding() -> Binding<Bool> {
+    Binding(
+      get: { self.widgetStyle.showBackground },
+      set: { newValue in
+        self.widgetStyle.showBackground = newValue
+        self.saveConfiguration()
+      }
+    )
+  }
+
+  func widgetBackgroundStyleBinding() -> Binding<WidgetBackgroundStyle> {
+    Binding(
+      get: { self.widgetStyle.backgroundStyle },
+      set: { newValue in
+        self.widgetStyle.backgroundStyle = newValue
+        self.saveConfiguration()
+      }
+    )
+  }
+
+  func widgetRingPaletteBinding() -> Binding<WidgetRingPalette> {
+    Binding(
+      get: { self.widgetStyle.ringPalette },
+      set: { newValue in
+        self.widgetStyle.ringPalette = newValue
+        self.saveConfiguration()
+      }
+    )
+  }
+
+  func providerStyle(for provider: QuotaProvider) -> ProviderStyleSettings {
+    providerStyleSettings[provider]
+      ?? ProviderStyleSettings.defaultValue(for: provider, fallbackStyle: widgetStyle)
+  }
+
+  func effectiveStyle(for provider: QuotaProvider) -> WidgetStyleSettings {
+    let providerStyle = providerStyle(for: provider)
+    return providerStyle.useCustomStyle ? providerStyle.style : widgetStyle
+  }
+
+  func providerOverrideEnabledBinding(for provider: QuotaProvider) -> Binding<Bool> {
+    Binding(
+      get: { self.providerStyle(for: provider).useCustomStyle },
+      set: { newValue in
+        self.updateProviderStyle(for: provider) { style in
+          style.useCustomStyle = newValue
+          if newValue {
+            style.style = self.widgetStyle
+          }
+        }
+      }
+    )
+  }
+
+  func providerShowBackgroundBinding(for provider: QuotaProvider) -> Binding<Bool> {
+    Binding(
+      get: { self.providerStyle(for: provider).style.showBackground },
+      set: { newValue in
+        self.updateProviderStyle(for: provider) { style in
+          style.style.showBackground = newValue
+        }
+      }
+    )
+  }
+
+  func providerBackgroundStyleBinding(for provider: QuotaProvider) -> Binding<WidgetBackgroundStyle> {
+    Binding(
+      get: { self.providerStyle(for: provider).style.backgroundStyle },
+      set: { newValue in
+        self.updateProviderStyle(for: provider) { style in
+          style.style.backgroundStyle = newValue
+        }
+      }
+    )
+  }
+
+  func providerRingPaletteBinding(for provider: QuotaProvider) -> Binding<WidgetRingPalette> {
+    Binding(
+      get: { self.providerStyle(for: provider).style.ringPalette },
+      set: { newValue in
+        self.updateProviderStyle(for: provider) { style in
+          style.style.ringPalette = newValue
+        }
       }
     )
   }
 
   func status(for provider: QuotaProvider) -> ProviderCredentialStatus? {
     credentialStatuses.first(where: { $0.provider == provider })
+  }
+
+  func isProviderAvailable(_ provider: QuotaProvider) -> Bool {
+    status(for: provider)?.available ?? false
+  }
+
+  private func allProvidersEnabled() -> [QuotaProvider: Bool] {
+    Dictionary(uniqueKeysWithValues: QuotaProvider.allCases.map { ($0, true) })
+  }
+
+  private func applyAuthAccess(_ status: OpenCodeAuthAccessStatus) {
+    authAccessGranted = status.granted
+    authAccessSummary = status.summary
+    authAccessDetail = status.detail
+  }
+
+  private func updateProviderStyle(
+    for provider: QuotaProvider,
+    mutate: (inout ProviderStyleSettings) -> Void
+  ) {
+    var style = providerStyle(for: provider)
+    mutate(&style)
+    providerStyleSettings[provider] = style
+    saveConfiguration()
+  }
+
+  private func loadSettingsFromPreferredStore() throws -> AppSettings {
+    if
+      let appGroupURL = try? SharedPaths.settingsFileURL(),
+      FileManager.default.fileExists(atPath: appGroupURL.path)
+    {
+      return try SettingsStore(fileURL: appGroupURL).load()
+    }
+
+    return try settingsStore.load()
+  }
+
+  private func loadSnapshotFromPreferredStore() throws -> QuotaSnapshot? {
+    if
+      let appGroupURL = try? SharedPaths.snapshotFileURL(),
+      FileManager.default.fileExists(atPath: appGroupURL.path)
+    {
+      return try SnapshotStore(fileURL: appGroupURL).load()
+    }
+
+    return try snapshotStore.load()
+  }
+
+  private func currentSettings() -> AppSettings {
+    AppSettings(
+      refreshIntervalMinutes: refreshIntervalMinutes,
+      providers: QuotaProvider.allCases.map {
+        ProviderSettings(provider: $0, isEnabled: true)
+      },
+      widgetStyle: widgetStyle,
+      providerStyleSettings: QuotaProvider.allCases.map { provider in
+        providerStyle(for: provider)
+      }
+    )
+  }
+
+  @discardableResult
+  private func syncSettingsToWidgetStore(_ settings: AppSettings) -> Bool {
+    guard let appGroupStore = appGroupSettingsStore() else { return false }
+
+    do {
+      try appGroupStore.save(settings)
+      return true
+    } catch {
+      return false
+    }
+  }
+
+  @discardableResult
+  private func syncSnapshotToWidgetStore(_ snapshot: QuotaSnapshot) -> Bool {
+    guard let appGroupStore = appGroupSnapshotStore() else { return false }
+
+    do {
+      try appGroupStore.save(snapshot)
+      return true
+    } catch {
+      return false
+    }
+  }
+
+  private func appGroupSettingsStore() -> SettingsStore? {
+    guard let url = try? SharedPaths.settingsFileURL() else { return nil }
+    return SettingsStore(fileURL: url)
+  }
+
+  private func appGroupSnapshotStore() -> SnapshotStore? {
+    guard let url = try? SharedPaths.snapshotFileURL() else { return nil }
+    return SnapshotStore(fileURL: url)
+  }
+
+  private func reloadWidgetTimelines() {
+    for kind in SharedConstants.allWidgetKinds {
+      WidgetCenter.shared.reloadTimelines(ofKind: kind)
+    }
+    WidgetCenter.shared.reloadAllTimelines()
+
+    DispatchQueue.main.asyncAfter(deadline: .now() + 0.75) {
+      for kind in SharedConstants.allWidgetKinds {
+        WidgetCenter.shared.reloadTimelines(ofKind: kind)
+      }
+      WidgetCenter.shared.reloadAllTimelines()
+    }
   }
 }

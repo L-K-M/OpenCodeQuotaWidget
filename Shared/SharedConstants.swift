@@ -5,6 +5,20 @@ enum SharedConstants {
   static let snapshotFileName = "quota-snapshot.json"
   static let settingsFileName = "quota-settings.json"
   static let widgetKind = "OpenCodeQuotaWidget"
+  static let openAIWidgetKind = "OpenCodeQuotaWidget.openai"
+  static let zhipuWidgetKind = "OpenCodeQuotaWidget.zhipu"
+  static let zaiWidgetKind = "OpenCodeQuotaWidget.zai"
+  static let googleWidgetKind = "OpenCodeQuotaWidget.google"
+  static let copilotWidgetKind = "OpenCodeQuotaWidget.copilot"
+
+  static let allWidgetKinds: [String] = [
+    widgetKind,
+    openAIWidgetKind,
+    zhipuWidgetKind,
+    zaiWidgetKind,
+    googleWidgetKind,
+    copilotWidgetKind
+  ]
 }
 
 enum SharedPaths {

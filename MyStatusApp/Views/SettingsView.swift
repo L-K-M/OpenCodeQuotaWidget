@@ -9,12 +9,15 @@ struct SettingsView: View {
 
   @ObservedObject var model: AppModel
   @State private var selectedTab: SettingsTab = .general
+
   private let providers = Array(QuotaProvider.allCases)
+  private let refreshIntervalOptions = [15, 30, 45, 60, 90, 120, 180]
 
   var body: some View {
     VStack(spacing: 0) {
       tabsHeader
       currentTabContent
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
     }
     .navigationTitle("OpenCodeQuota")
   }
@@ -75,6 +78,7 @@ struct SettingsView: View {
         Text(title)
           .font(.system(size: 14, weight: .semibold))
       }
+      .frame(width: 110, alignment: .center)
       .padding(.horizontal, 14)
       .padding(.vertical, 7)
       .background {
@@ -105,62 +109,128 @@ struct SettingsView: View {
 
   private var generalTab: some View {
     ScrollView {
-      VStack(alignment: .leading, spacing: 20) {
-        header
-        refreshSection
-        actionSection
-        snapshotSection
+      VStack(alignment: .leading, spacing: 28) {
+        authAccessSection
+        generalSettingsSection
+        actionsSection
       }
+      .frame(maxWidth: .infinity, alignment: .leading)
       .padding(24)
     }
   }
 
-  private var header: some View {
-    VStack(alignment: .leading, spacing: 8) {
-      Text("OpenCode Credential Source")
-        .font(.title2.weight(.semibold))
+  private var authAccessSection: some View {
+    VStack(alignment: .leading, spacing: 12) {
+      Text("Access to OpenCode auth")
+        .font(.title3.weight(.semibold))
 
-      Text("Credentials are loaded from your local OpenCode config files. No manual credential entry is required.")
+      Text("OpenCodeQuota reads credentials from `~/.local/share/opencode/auth.json` and related OpenCode files. Grant access once if the sandbox blocks file reads.")
+        .font(.subheadline)
         .foregroundStyle(.secondary)
+        .textSelection(.enabled)
 
-      Text("Expected files: ~/.local/share/opencode/auth.json, ~/.config/opencode/antigravity-accounts.json, ~/.config/opencode/copilot-quota-token.json")
-        .font(.caption)
-        .foregroundStyle(.secondary)
+      authAccessBanner
 
-      Text("If sandbox permissions block reads, use 'Grant File Access' once to create security-scoped bookmarks.")
-        .font(.caption)
-        .foregroundStyle(.secondary)
+      Button("Grant File Access") {
+        model.grantOpenCodeFileAccess()
+      }
+      .buttonStyle(.borderedProminent)
     }
   }
 
-  private var refreshSection: some View {
-    VStack(alignment: .leading, spacing: 12) {
-      Text("Refresh Settings")
-        .font(.headline)
+  private var authAccessBanner: some View {
+    let tint: Color = model.authAccessGranted ? .green : .red
+    let title = model.authAccessGranted ? "Access granted" : "Access required"
 
-      Stepper(value: $model.refreshIntervalMinutes, in: 15...180, step: 5) {
-        Text("Refresh interval: \(model.refreshIntervalMinutes) minutes")
+    return VStack(alignment: .leading, spacing: 6) {
+      Text(title)
+        .font(.subheadline.weight(.semibold))
+        .foregroundStyle(tint)
+
+      Text(model.authAccessSummary)
+        .font(.subheadline)
+
+      if !model.authAccessDetail.isEmpty {
+        Text(model.authAccessDetail)
+          .font(.caption)
+          .foregroundStyle(.secondary)
+          .textSelection(.enabled)
       }
     }
-    .padding(16)
-    .background(.quaternary, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+    .frame(maxWidth: .infinity, alignment: .leading)
+    .padding(12)
+    .background(tint.opacity(0.12), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+    .overlay(
+      RoundedRectangle(cornerRadius: 10, style: .continuous)
+        .stroke(tint.opacity(0.45), lineWidth: 1)
+    )
   }
 
-  private var actionSection: some View {
+  private var generalSettingsSection: some View {
     VStack(alignment: .leading, spacing: 12) {
-      HStack(spacing: 12) {
+      Text("Settings")
+        .font(.title3.weight(.semibold))
+
+      VStack(spacing: 0) {
+        settingsRow(title: "Refresh interval") {
+          Picker("Refresh interval", selection: model.refreshIntervalBinding()) {
+            ForEach(refreshIntervalOptions, id: \.self) { minutes in
+              Text("\(minutes) min").tag(minutes)
+            }
+          }
+          .pickerStyle(.menu)
+          .frame(width: 140)
+        }
+
+        Divider()
+
+        settingsRow(title: "Show widget background") {
+          Toggle("", isOn: model.widgetShowBackgroundBinding())
+            .labelsHidden()
+            .toggleStyle(.switch)
+        }
+
+        Divider()
+
+        settingsRow(title: "Background color") {
+          Picker("Background color", selection: model.widgetBackgroundStyleBinding()) {
+            ForEach(WidgetBackgroundStyle.allCases, id: \.self) { style in
+              Text(style.displayName).tag(style)
+            }
+          }
+          .pickerStyle(.menu)
+          .frame(width: 160)
+          .disabled(!model.widgetStyle.showBackground)
+        }
+        .opacity(model.widgetStyle.showBackground ? 1 : 0.45)
+
+        Divider()
+
+        settingsRow(title: "Circle graph colors") {
+          Picker("Circle graph colors", selection: model.widgetRingPaletteBinding()) {
+            ForEach(WidgetRingPalette.allCases, id: \.self) { palette in
+              Text(palette.displayName).tag(palette)
+            }
+          }
+          .pickerStyle(.menu)
+          .frame(width: 160)
+        }
+      }
+
+      Text("These settings apply to all widgets unless a provider tab enables style overrides.")
+        .font(.caption)
+        .foregroundStyle(.secondary)
+    }
+  }
+
+  private var actionsSection: some View {
+    VStack(alignment: .leading, spacing: 12) {
+      Text("Actions")
+        .font(.title3.weight(.semibold))
+
+      HStack(spacing: 10) {
         Button("Reload OpenCode Sources") {
           model.reloadCredentialStatuses()
-        }
-        .buttonStyle(.bordered)
-
-        Button("Grant File Access") {
-          model.grantOpenCodeFileAccess()
-        }
-        .buttonStyle(.bordered)
-
-        Button("Save Preferences") {
-          Task { await model.saveConfiguration() }
         }
         .buttonStyle(.bordered)
 
@@ -174,9 +244,11 @@ struct SettingsView: View {
             Text("Refresh Now")
           }
         }
-        .disabled(model.isRefreshing)
         .buttonStyle(.borderedProminent)
+        .disabled(model.isRefreshing)
       }
+
+      latestSnapshotCard
 
       if !model.statusMessage.isEmpty {
         Text(model.statusMessage)
@@ -186,56 +258,209 @@ struct SettingsView: View {
     }
   }
 
-  private var snapshotSection: some View {
-    VStack(alignment: .leading, spacing: 10) {
-      Text("Latest Snapshot")
-        .font(.headline)
+  private var latestSnapshotCard: some View {
+    VStack(alignment: .leading, spacing: 12) {
+      HStack {
+        Text("Latest Snapshot")
+          .font(.headline)
+        Spacer()
+
+        if let snapshot = model.snapshot {
+          Text(snapshot.generatedAt.formatted(date: .abbreviated, time: .shortened))
+            .font(.caption)
+            .foregroundStyle(.secondary)
+        }
+      }
 
       if let snapshot = model.snapshot {
-        Text("Updated: \(snapshot.generatedAt.formatted(date: .abbreviated, time: .shortened))")
-          .font(.subheadline)
-          .foregroundStyle(.secondary)
+        HStack(spacing: 8) {
+          summaryPill(title: "Providers", value: "\(snapshot.providers.count)", tint: .blue)
+          summaryPill(
+            title: "Failures",
+            value: "\(snapshot.failures.count)",
+            tint: snapshot.failures.isEmpty ? .green : .orange
+          )
+        }
 
-        Text("Providers: \(snapshot.providers.count) | Failures: \(snapshot.failures.count)")
-          .font(.subheadline)
-          .foregroundStyle(.secondary)
+        if snapshot.providers.isEmpty {
+          Text("No provider data in latest snapshot.")
+            .font(.subheadline)
+            .foregroundStyle(.secondary)
+        } else {
+          VStack(alignment: .leading, spacing: 8) {
+            ForEach(Array(snapshot.providers.prefix(5))) { usage in
+              HStack {
+                Text(shortName(for: usage.provider))
+                  .font(.caption.weight(.semibold))
+                  .frame(width: 64, alignment: .leading)
 
-        ForEach(snapshot.providers) { usage in
-          VStack(alignment: .leading, spacing: 2) {
-            Text(usage.title)
-              .font(.subheadline.weight(.medium))
+                if let metric = usage.metrics.first {
+                  Text(metric.label)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
 
-            if let metric = usage.metrics.first {
-              let remaining = metric.remainingPercent.map { "\($0)%" } ?? (metric.isUnlimited ? "INF" : "-")
-              Text("\(metric.label): \(remaining)")
-                .font(.caption)
-                .foregroundStyle(.secondary)
+                  Spacer()
+
+                  Text(percentText(metric))
+                    .font(.caption.weight(.semibold))
+                    .monospacedDigit()
+                } else {
+                  Spacer()
+                  Text("No metrics")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                }
+              }
             }
           }
         }
 
         if !snapshot.failures.isEmpty {
           Divider()
-          ForEach(snapshot.failures) { failure in
-            Text("\(failure.provider.displayName): \(failure.message)")
-              .font(.caption)
-              .foregroundStyle(.orange)
+          VStack(alignment: .leading, spacing: 6) {
+            ForEach(Array(snapshot.failures.prefix(3))) { failure in
+              Text("\(failure.provider.displayName): \(failure.message)")
+                .font(.caption)
+                .foregroundStyle(.orange)
+                .lineLimit(2)
+            }
           }
         }
       } else {
-        Text("No snapshot available yet.")
+        Text("No snapshot available yet. Use Refresh Now to fetch usage.")
+          .font(.subheadline)
           .foregroundStyle(.secondary)
       }
     }
-    .padding(16)
-    .background(.quaternary, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+    .padding(14)
+    .background(.quaternary.opacity(0.6), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+  }
+
+  private func providerTab(for provider: QuotaProvider) -> some View {
+    let providerStyle = model.providerStyle(for: provider)
+    let credentialsAvailable = model.isProviderAvailable(provider)
+    let dataLoaded = providerUsage(for: provider) != nil
+
+    return ScrollView {
+      VStack(alignment: .leading, spacing: 0) {
+        providerStatusRow(
+          title: "Credentials",
+          message: credentialsAvailable ? "Credentials available" : "Credentials unavailable",
+          isPositive: credentialsAvailable
+        )
+
+        Divider()
+
+        providerStatusRow(
+          title: "Data",
+          message: dataLoaded ? "Data loaded" : "No data loaded",
+          isPositive: dataLoaded
+        )
+
+        Divider()
+
+        settingsRow(title: "Override global styling") {
+          Toggle("", isOn: model.providerOverrideEnabledBinding(for: provider))
+            .labelsHidden()
+            .toggleStyle(.switch)
+        }
+
+        if providerStyle.useCustomStyle {
+          Divider()
+
+          settingsRow(title: "Show background") {
+            Toggle("", isOn: model.providerShowBackgroundBinding(for: provider))
+              .labelsHidden()
+              .toggleStyle(.switch)
+          }
+
+          Divider()
+
+          settingsRow(title: "Background color") {
+            Picker("Background color", selection: model.providerBackgroundStyleBinding(for: provider)) {
+              ForEach(WidgetBackgroundStyle.allCases, id: \.self) { backgroundStyle in
+                Text(backgroundStyle.displayName).tag(backgroundStyle)
+              }
+            }
+            .pickerStyle(.menu)
+            .frame(width: 160)
+            .disabled(!providerStyle.style.showBackground)
+          }
+          .opacity(providerStyle.style.showBackground ? 1 : 0.45)
+
+          Divider()
+
+          settingsRow(title: "Circle graph colors") {
+            Picker("Circle graph colors", selection: model.providerRingPaletteBinding(for: provider)) {
+              ForEach(WidgetRingPalette.allCases, id: \.self) { palette in
+                Text(palette.displayName).tag(palette)
+              }
+            }
+            .pickerStyle(.menu)
+            .frame(width: 160)
+          }
+        }
+      }
+      .frame(maxWidth: .infinity, alignment: .leading)
+      .padding(24)
+    }
+  }
+
+  private func providerStatusRow(
+    title: String,
+    message: String,
+    isPositive: Bool
+  ) -> some View {
+    HStack {
+      Text(title)
+      Spacer(minLength: 24)
+
+      HStack(spacing: 8) {
+        Circle()
+          .fill(isPositive ? Color.green : Color.red)
+          .frame(width: 8, height: 8)
+        Text(message)
+          .font(.subheadline)
+      }
+    }
+    .padding(.vertical, 8)
+  }
+
+  private func settingsRow<Content: View>(
+    title: String,
+    @ViewBuilder content: () -> Content
+  ) -> some View {
+    HStack(alignment: .center) {
+      Text(title)
+      Spacer(minLength: 24)
+      content()
+    }
+    .padding(.vertical, 8)
+  }
+
+  private func summaryPill(title: String, value: String, tint: Color) -> some View {
+    HStack(spacing: 6) {
+      Text(title)
+      Text(value)
+        .fontWeight(.semibold)
+    }
+    .font(.caption)
+    .padding(.horizontal, 10)
+    .padding(.vertical, 4)
+    .background(tint.opacity(0.16), in: Capsule())
+    .foregroundStyle(tint)
   }
 
   private func tabDotColor(for provider: QuotaProvider) -> Color {
-    (model.status(for: provider)?.available ?? false) ? .green : .red
+    model.isProviderAvailable(provider) ? .green : .red
   }
 
   private func tabTitle(for provider: QuotaProvider) -> String {
+    shortName(for: provider)
+  }
+
+  private func shortName(for provider: QuotaProvider) -> String {
     switch provider {
     case .openAI:
       return "OpenAI"
@@ -254,128 +479,20 @@ struct SettingsView: View {
     model.snapshot?.providers.first(where: { $0.provider == provider })
   }
 
-  private func providerFailure(for provider: QuotaProvider) -> ProviderFailure? {
-    model.snapshot?.failures.first(where: { $0.provider == provider })
-  }
-
-  private func providerTab(for provider: QuotaProvider) -> some View {
-    let status = model.status(for: provider)
-
-    return ScrollView {
-      VStack(alignment: .leading, spacing: 20) {
-        VStack(alignment: .leading, spacing: 12) {
-          Text("\(provider.displayName) Settings")
-            .font(.title2.weight(.semibold))
-
-          Toggle("Enable \(provider.displayName)", isOn: model.enabledBinding(for: provider))
-            .toggleStyle(.switch)
-
-          HStack(spacing: 6) {
-            Circle()
-              .fill((status?.available ?? false) ? Color.green : Color.orange)
-              .frame(width: 8, height: 8)
-            Text(status?.detail ?? "No status available")
-              .font(.caption)
-              .foregroundStyle(.secondary)
-          }
-
-          Text(status?.source ?? "Unknown source")
-            .font(.caption2)
-            .foregroundStyle(.secondary)
-            .textSelection(.enabled)
-        }
-        .padding(16)
-        .background(.quaternary, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
-
-        providerSnapshotSection(for: provider)
-
-        VStack(alignment: .leading, spacing: 8) {
-          Text("More settings soon")
-            .font(.headline)
-          Text("This tab is ready for provider-specific controls as we add deeper configuration options.")
-            .font(.subheadline)
-            .foregroundStyle(.secondary)
-        }
-        .padding(16)
-        .background(.quaternary, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
-      }
-      .padding(24)
+  private func percentText(_ metric: UsageMetric?) -> String {
+    guard let metric else {
+      return "--"
     }
-  }
 
-  private func providerSnapshotSection(for provider: QuotaProvider) -> some View {
-    let usage = providerUsage(for: provider)
-    let failure = providerFailure(for: provider)
-
-    return VStack(alignment: .leading, spacing: 10) {
-      Text("Latest \(provider.displayName) Snapshot")
-        .font(.headline)
-
-      if let usage {
-        Text("Fetched: \(usage.fetchedAt.formatted(date: .abbreviated, time: .shortened))")
-          .font(.subheadline)
-          .foregroundStyle(.secondary)
-
-        if let subtitle = usage.subtitle, !subtitle.isEmpty {
-          Text(subtitle)
-            .font(.subheadline)
-            .foregroundStyle(.secondary)
-        }
-
-        if usage.metrics.isEmpty {
-          Text("No usage metrics were returned.")
-            .font(.caption)
-            .foregroundStyle(.secondary)
-        } else {
-          ForEach(usage.metrics) { metric in
-            VStack(alignment: .leading, spacing: 4) {
-              Text(metric.label)
-                .font(.subheadline.weight(.medium))
-
-              if let usageLine = metric.usageLine {
-                Text(usageLine)
-                  .font(.caption)
-                  .foregroundStyle(.secondary)
-              }
-
-              let remaining = metric.remainingPercent.map { "\($0)% remaining" } ?? (metric.isUnlimited ? "Unlimited" : "Remaining: -")
-              Text(remaining)
-                .font(.caption)
-                .foregroundStyle(.secondary)
-
-              if let resetIn = metric.resetIn {
-                Text("Resets in: \(resetIn)")
-                  .font(.caption)
-                  .foregroundStyle(.secondary)
-              }
-
-              if let detail = metric.detail, !detail.isEmpty {
-                Text(detail)
-                  .font(.caption2)
-                  .foregroundStyle(.secondary)
-              }
-            }
-            .padding(10)
-            .background(.quaternary.opacity(0.6), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
-          }
-        }
-
-        if let warning = usage.warning, !warning.isEmpty {
-          Text(warning)
-            .font(.caption)
-            .foregroundStyle(.orange)
-        }
-      } else if let failure {
-        Text("Last refresh reported an issue: \(failure.message)")
-          .font(.subheadline)
-          .foregroundStyle(.orange)
-      } else {
-        Text("No snapshot available for this provider yet.")
-          .foregroundStyle(.secondary)
-      }
+    if metric.isUnlimited {
+      return "INF"
     }
-    .padding(16)
-    .background(.quaternary, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+
+    guard let remaining = metric.remainingPercent else {
+      return "--"
+    }
+
+    return "\(remaining)%"
   }
 }
 

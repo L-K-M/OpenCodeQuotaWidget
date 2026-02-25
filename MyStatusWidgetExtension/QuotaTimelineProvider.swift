@@ -6,6 +6,7 @@ struct QuotaEntry: TimelineEntry {
   let date: Date
   let snapshot: QuotaSnapshot?
   let refreshIntervalMinutes: Int
+  let settings: AppSettings
 }
 
 struct QuotaTimelineProvider: TimelineProvider {
@@ -13,7 +14,8 @@ struct QuotaTimelineProvider: TimelineProvider {
     QuotaEntry(
       date: Date(),
       snapshot: SampleSnapshotFactory.make(now: Date()),
-      refreshIntervalMinutes: 30
+      refreshIntervalMinutes: 30,
+      settings: .default
     )
   }
 
@@ -23,7 +25,8 @@ struct QuotaTimelineProvider: TimelineProvider {
         QuotaEntry(
           date: Date(),
           snapshot: SampleSnapshotFactory.make(now: Date()),
-          refreshIntervalMinutes: 30
+          refreshIntervalMinutes: 30,
+          settings: .default
         )
       )
       return
@@ -42,9 +45,15 @@ struct QuotaTimelineProvider: TimelineProvider {
   }
 
   private func makeCurrentEntry(now: Date) -> QuotaEntry {
+    let settings = loadSettings()
     let snapshot = loadSnapshot()
-    let refreshInterval = loadRefreshInterval()
-    return QuotaEntry(date: now, snapshot: snapshot, refreshIntervalMinutes: refreshInterval)
+    let refreshInterval = max(15, settings.refreshIntervalMinutes)
+    return QuotaEntry(
+      date: now,
+      snapshot: snapshot,
+      refreshIntervalMinutes: refreshInterval,
+      settings: settings
+    )
   }
 
   private func loadSnapshot() -> QuotaSnapshot? {
@@ -56,12 +65,12 @@ struct QuotaTimelineProvider: TimelineProvider {
     }
   }
 
-  private func loadRefreshInterval() -> Int {
+  private func loadSettings() -> AppSettings {
     do {
       let store = SettingsStore(fileURL: try SharedPaths.settingsFileURL())
-      return max(15, try store.load().refreshIntervalMinutes)
+      return try store.load()
     } catch {
-      return 30
+      return .default
     }
   }
 }
