@@ -1,0 +1,425 @@
+import SwiftUI
+import WidgetKit
+import QuotaCore
+
+struct OpenCodeQuotaWidget: Widget {
+  private let kind = SharedConstants.widgetKind
+
+  var body: some WidgetConfiguration {
+    StaticConfiguration(kind: kind, provider: QuotaTimelineProvider()) { entry in
+      DashboardWidgetRootView(entry: entry)
+        .containerBackground(for: .widget) {
+          Color.clear
+        }
+    }
+    .configurationDisplayName("OpenCodeQuota Dashboard")
+    .description("Compact quota overview across all enabled providers.")
+    .supportedFamilies([.systemSmall, .systemMedium])
+  }
+}
+
+struct OpenAIQuotaWidget: Widget {
+  var body: some WidgetConfiguration {
+    providerWidgetConfiguration(
+      kind: "OpenCodeQuotaWidget.openai",
+      provider: .openAI,
+      displayName: "OpenAI Rings",
+      widgetDescription: "OpenAI short and long window limits."
+    )
+  }
+}
+
+struct ZhipuQuotaWidget: Widget {
+  var body: some WidgetConfiguration {
+    providerWidgetConfiguration(
+      kind: "OpenCodeQuotaWidget.zhipu",
+      provider: .zhipu,
+      displayName: "Zhipu AI Rings",
+      widgetDescription: "Zhipu token and quota limits."
+    )
+  }
+}
+
+struct ZAIQuotaWidget: Widget {
+  var body: some WidgetConfiguration {
+    providerWidgetConfiguration(
+      kind: "OpenCodeQuotaWidget.zai",
+      provider: .zai,
+      displayName: "Z.ai Rings",
+      widgetDescription: "Z.ai token and quota limits."
+    )
+  }
+}
+
+struct GoogleQuotaWidget: Widget {
+  var body: some WidgetConfiguration {
+    providerWidgetConfiguration(
+      kind: "OpenCodeQuotaWidget.google",
+      provider: .googleAntigravity,
+      displayName: "Google Rings",
+      widgetDescription: "Google Antigravity model limits."
+    )
+  }
+}
+
+struct CopilotQuotaWidget: Widget {
+  var body: some WidgetConfiguration {
+    providerWidgetConfiguration(
+      kind: "OpenCodeQuotaWidget.copilot",
+      provider: .gitHubCopilot,
+      displayName: "Copilot Rings",
+      widgetDescription: "GitHub Copilot quota limits."
+    )
+  }
+}
+
+private func providerWidgetConfiguration(
+  kind: String,
+  provider: QuotaProvider,
+  displayName: String,
+  widgetDescription: String
+) -> some WidgetConfiguration {
+  StaticConfiguration(kind: kind, provider: QuotaTimelineProvider()) { entry in
+    ProviderSmallQuotaView(entry: entry, provider: provider)
+      .containerBackground(for: .widget) {
+        Color.clear
+      }
+  }
+  .configurationDisplayName(displayName)
+  .description(widgetDescription)
+  .supportedFamilies([.systemSmall])
+}
+
+private struct DashboardWidgetRootView: View {
+  @Environment(\.widgetFamily) private var family
+  let entry: QuotaEntry
+
+  var body: some View {
+    switch family {
+    case .systemSmall:
+      OverviewSmallQuotaView(entry: entry)
+    default:
+      MediumCompactQuotaView(entry: entry)
+    }
+  }
+}
+
+private struct OverviewSmallQuotaView: View {
+  let entry: QuotaEntry
+
+  var body: some View {
+    VStack(alignment: .leading, spacing: 6) {
+      Text("OpenCodeQuota")
+        .font(.caption2.weight(.semibold))
+        .foregroundStyle(.secondary)
+
+      if let usage = featuredProvider {
+        Text(usage.title)
+          .font(.caption.weight(.semibold))
+          .lineLimit(1)
+
+        ConcentricQuotaChart(metrics: chartMetrics(for: usage))
+          .frame(maxWidth: .infinity, minHeight: 88, maxHeight: .infinity)
+
+        Text(metricSummary(for: usage))
+          .font(.caption2)
+          .foregroundStyle(.secondary)
+          .lineLimit(1)
+      } else {
+        Spacer(minLength: 0)
+        Text("OpenCodeQuota app")
+          .font(.caption.weight(.semibold))
+        Text("Enable providers and refresh")
+          .font(.caption2)
+          .foregroundStyle(.secondary)
+        Spacer(minLength: 0)
+      }
+    }
+    .padding(10)
+  }
+
+  private var featuredProvider: ProviderUsage? {
+    guard let providers = entry.snapshot?.providers, !providers.isEmpty else {
+      return nil
+    }
+
+    let providersWithDualRings = providers.filter { chartMetrics(for: $0).count >= 2 }
+    if let mostLoadedDual = providersWithDualRings.max(by: usageScoreSort) {
+      return mostLoadedDual
+    }
+
+    return providers.max(by: usageScoreSort)
+  }
+
+  private func usageScoreSort(_ lhs: ProviderUsage, _ rhs: ProviderUsage) -> Bool {
+    (lhs.maxUsagePercent ?? 0) < (rhs.maxUsagePercent ?? 0)
+  }
+}
+
+private struct ProviderSmallQuotaView: View {
+  let entry: QuotaEntry
+  let provider: QuotaProvider
+
+  var body: some View {
+    VStack(alignment: .leading, spacing: 6) {
+      Text(provider.displayName)
+        .font(.caption.weight(.semibold))
+        .lineLimit(1)
+
+      if let usage = providerUsage {
+        ConcentricQuotaChart(metrics: chartMetrics(for: usage))
+          .frame(maxWidth: .infinity, minHeight: 96, maxHeight: .infinity)
+
+        Text(metricSummary(for: usage))
+          .font(.caption2)
+          .foregroundStyle(.secondary)
+          .lineLimit(1)
+      } else {
+        Spacer(minLength: 0)
+        Text("No data yet")
+          .font(.caption)
+          .foregroundStyle(.secondary)
+        Text("Refresh in app")
+          .font(.caption2)
+          .foregroundStyle(.secondary)
+        Spacer(minLength: 0)
+      }
+    }
+    .padding(10)
+  }
+
+  private var providerUsage: ProviderUsage? {
+    entry.snapshot?.providers.first(where: { $0.provider == provider })
+  }
+}
+
+private struct MediumCompactQuotaView: View {
+  let entry: QuotaEntry
+
+  var body: some View {
+    VStack(alignment: .leading, spacing: 6) {
+      HStack {
+        Text("AI Quota")
+          .font(.caption.weight(.semibold))
+        Spacer()
+        if let snapshot = entry.snapshot {
+          Text(snapshot.generatedAt, style: .time)
+            .font(.caption2)
+            .foregroundStyle(.secondary)
+        }
+      }
+
+      if let snapshot = entry.snapshot, !snapshot.providers.isEmpty {
+        ForEach(sortedProviders(snapshot.providers).prefix(6)) { usage in
+          CompactProviderUsageRow(usage: usage)
+        }
+
+        if !snapshot.failures.isEmpty {
+          Text("\(snapshot.failures.count) unavailable")
+            .font(.caption2)
+            .foregroundStyle(.orange)
+        }
+      } else {
+        Spacer(minLength: 0)
+        Text("No providers configured")
+          .font(.caption.weight(.semibold))
+        Text("Load credentials from OpenCode config")
+          .font(.caption2)
+          .foregroundStyle(.secondary)
+        Spacer(minLength: 0)
+      }
+    }
+    .padding(10)
+  }
+
+  private func sortedProviders(_ providers: [ProviderUsage]) -> [ProviderUsage] {
+    providers.sorted { lhs, rhs in
+      (lhs.maxUsagePercent ?? 0) > (rhs.maxUsagePercent ?? 0)
+    }
+  }
+}
+
+private struct CompactProviderUsageRow: View {
+  let usage: ProviderUsage
+
+  var body: some View {
+    HStack(spacing: 6) {
+      Text(shortName)
+        .font(.caption2.weight(.semibold))
+        .lineLimit(1)
+        .frame(width: 58, alignment: .leading)
+
+      MiniProgressBar(percent: metric?.remainingPercent, unlimited: metric?.isUnlimited ?? false)
+        .frame(height: 5)
+
+      Text(percentText(for: metric))
+        .font(.caption2.weight(.semibold))
+        .monospacedDigit()
+        .frame(width: 32, alignment: .trailing)
+    }
+  }
+
+  private var metric: UsageMetric? {
+    usage.metrics.first(where: { $0.remainingPercent != nil || $0.isUnlimited }) ?? usage.metrics.first
+  }
+
+  private var shortName: String {
+    switch usage.provider {
+    case .openAI:
+      return "OpenAI"
+    case .zhipu:
+      return "Zhipu"
+    case .zai:
+      return "Z.ai"
+    case .googleAntigravity:
+      return "Google"
+    case .gitHubCopilot:
+      return "Copilot"
+    }
+  }
+}
+
+private struct ConcentricQuotaChart: View {
+  let metrics: [UsageMetric]
+
+  var body: some View {
+    GeometryReader { proxy in
+      let side = min(proxy.size.width, proxy.size.height)
+      let outerMetric = metrics.first
+      let innerMetric = metrics.dropFirst().first
+
+      ZStack {
+        if let outerMetric {
+          CircularQuotaRing(metric: outerMetric, lineWidth: max(8, side * 0.12))
+            .frame(width: side, height: side)
+        }
+
+        if let innerMetric {
+          CircularQuotaRing(metric: innerMetric, lineWidth: max(6, side * 0.1))
+            .frame(width: side * 0.64, height: side * 0.64)
+        }
+
+        VStack(spacing: 1) {
+          if let outerMetric {
+            Text(percentText(for: outerMetric))
+              .font(.caption.weight(.semibold))
+              .monospacedDigit()
+          } else {
+            Text("--")
+              .font(.caption.weight(.semibold))
+              .foregroundStyle(.secondary)
+          }
+
+          if let innerMetric {
+            Text(percentText(for: innerMetric))
+              .font(.caption2)
+              .foregroundStyle(.secondary)
+              .monospacedDigit()
+          }
+        }
+      }
+      .frame(width: proxy.size.width, height: proxy.size.height)
+    }
+  }
+}
+
+private struct CircularQuotaRing: View {
+  let metric: UsageMetric
+  let lineWidth: CGFloat
+
+  var body: some View {
+    ZStack {
+      Circle()
+        .stroke(Color.white.opacity(0.16), lineWidth: lineWidth)
+
+      Circle()
+        .trim(from: 0, to: progress)
+        .stroke(
+          ringColor(for: metric),
+          style: StrokeStyle(lineWidth: lineWidth, lineCap: .round)
+        )
+        .rotationEffect(.degrees(-90))
+    }
+  }
+
+  private var progress: CGFloat {
+    if metric.isUnlimited {
+      return 1
+    }
+    let value = CGFloat(metric.remainingPercent ?? 0)
+    return max(0, min(1, value / 100))
+  }
+}
+
+private struct MiniProgressBar: View {
+  let percent: Int?
+  let unlimited: Bool
+
+  var body: some View {
+    GeometryReader { proxy in
+      let width = max(0, proxy.size.width)
+      ZStack(alignment: .leading) {
+        Capsule()
+          .fill(Color.white.opacity(0.16))
+
+        if unlimited {
+          Capsule().fill(Color.blue.opacity(0.85))
+        } else {
+          Capsule()
+            .fill(progressColor)
+            .frame(width: width * CGFloat(percent ?? 0) / 100.0)
+        }
+      }
+    }
+  }
+
+  private var progressColor: Color {
+    let value = percent ?? 0
+    if value >= 70 { return .green }
+    if value >= 40 { return .yellow }
+    return .red
+  }
+}
+
+private func chartMetrics(for usage: ProviderUsage) -> [UsageMetric] {
+  let candidates = usage.metrics.filter { $0.remainingPercent != nil || $0.isUnlimited }
+  if candidates.isEmpty {
+    return usage.metrics
+  }
+  return Array(candidates.prefix(2))
+}
+
+private func metricSummary(for usage: ProviderUsage) -> String {
+  let metrics = chartMetrics(for: usage)
+  guard let first = metrics.first else {
+    return "No quota metrics"
+  }
+
+  if metrics.count >= 2, let second = metrics.dropFirst().first {
+    return "S: \(percentText(for: first))  L: \(percentText(for: second))"
+  }
+
+  return "\(first.label): \(percentText(for: first))"
+}
+
+private func percentText(for metric: UsageMetric?) -> String {
+  guard let metric else { return "--" }
+  if metric.isUnlimited {
+    return "INF"
+  }
+  if let remaining = metric.remainingPercent {
+    return "\(remaining)%"
+  }
+  return "--"
+}
+
+private func ringColor(for metric: UsageMetric) -> Color {
+  if metric.isUnlimited {
+    return .blue
+  }
+
+  let value = metric.remainingPercent ?? 0
+  if value >= 70 { return .green }
+  if value >= 40 { return .yellow }
+  return .red
+}

@@ -1,0 +1,101 @@
+name: OpenCodeQuota
+options:
+  minimumXcodeGenVersion: 2.38.0
+  deploymentTarget:
+    macOS: "14.0"
+  createIntermediateGroups: true
+
+packages:
+  QuotaCore:
+    path: Packages/QuotaCore
+
+targets:
+  OpenCodeQuotaApp:
+    type: application
+    platform: macOS
+    sources:
+      - path: MyStatusApp
+        excludes:
+          - Info.plist
+          - "*.entitlements"
+      - path: Shared
+    dependencies:
+      - package: QuotaCore
+      - target: OpenCodeQuotaWidgetExtension
+        embed: true
+        codeSign: true
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: ch.lkmc.opencodequota.app
+        PRODUCT_NAME: OpenCodeQuota
+        SWIFT_VERSION: 5.10
+        CODE_SIGN_STYLE: Automatic
+        DEVELOPMENT_TEAM: 293A48LC7B
+        GENERATE_INFOPLIST_FILE: NO
+        CODE_SIGN_ENTITLEMENTS: MyStatusApp/MyStatusApp.entitlements
+        MACOSX_DEPLOYMENT_TARGET: 14.0
+        CURRENT_PROJECT_VERSION: 1
+        MARKETING_VERSION: 0.1.0
+    info:
+      path: MyStatusApp/Info.plist
+      properties:
+        CFBundleDevelopmentRegion: $(DEVELOPMENT_LANGUAGE)
+        CFBundleExecutable: $(EXECUTABLE_NAME)
+        CFBundleIdentifier: $(PRODUCT_BUNDLE_IDENTIFIER)
+        CFBundleInfoDictionaryVersion: "6.0"
+        CFBundleName: $(PRODUCT_NAME)
+        CFBundlePackageType: APPL
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        LSMinimumSystemVersion: $(MACOSX_DEPLOYMENT_TARGET)
+        NSPrincipalClass: NSApplication
+
+  OpenCodeQuotaWidgetExtension:
+    type: app-extension
+    platform: macOS
+    sources:
+      - path: MyStatusWidgetExtension
+        excludes:
+          - Info.plist
+          - "*.entitlements"
+      - path: Shared
+    dependencies:
+      - package: QuotaCore
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: ch.lkmc.opencodequota.app.widgetextension
+        PRODUCT_NAME: OpenCodeQuotaWidgetExtension
+        SWIFT_VERSION: 5.10
+        CODE_SIGN_STYLE: Automatic
+        DEVELOPMENT_TEAM: 293A48LC7B
+        GENERATE_INFOPLIST_FILE: NO
+        CODE_SIGN_ENTITLEMENTS: MyStatusWidgetExtension/MyStatusWidgetExtension.entitlements
+        APPLICATION_EXTENSION_API_ONLY: YES
+        MACOSX_DEPLOYMENT_TARGET: 14.0
+        SKIP_INSTALL: YES
+        CURRENT_PROJECT_VERSION: 1
+        MARKETING_VERSION: 0.1.0
+    info:
+      path: MyStatusWidgetExtension/Info.plist
+      properties:
+        CFBundleDevelopmentRegion: $(DEVELOPMENT_LANGUAGE)
+        CFBundleExecutable: $(EXECUTABLE_NAME)
+        CFBundleIdentifier: $(PRODUCT_BUNDLE_IDENTIFIER)
+        CFBundleInfoDictionaryVersion: "6.0"
+        CFBundleName: $(PRODUCT_NAME)
+        CFBundlePackageType: "XPC!"
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        LSMinimumSystemVersion: $(MACOSX_DEPLOYMENT_TARGET)
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.widgetkit-extension
+          NSExtensionPrincipalClass: $(PRODUCT_MODULE_NAME).OpenCodeQuotaWidgetBundle
+
+schemes:
+  OpenCodeQuotaApp:
+    build:
+      targets:
+        OpenCodeQuotaApp: all
+        OpenCodeQuotaWidgetExtension: all
+    run:
+      config: Debug

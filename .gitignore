@@ -1,0 +1,14 @@
+# Xcode
+DerivedData/
+build/
+*.xcworkspace/xcuserdata/
+*.xcodeproj/xcuserdata/
+*.xcuserstate
+OpenCodeQuota.xcodeproj
+
+# macOS
+.DS_Store
+
+# Secrets / local overrides
+*.local
+Secrets.plist

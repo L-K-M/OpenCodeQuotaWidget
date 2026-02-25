@@ -1,0 +1,549 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 77;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		15964F1307090DF95AEBE5B0 /* SharedConstants.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2027582433C46E9082A2AEE7 /* SharedConstants.swift */; };
+		35B47656D69608F756A3F5AA /* QuotaTimelineProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6EAEEA49A28910730F522443 /* QuotaTimelineProvider.swift */; };
+		36C871A04E8D47A0E2A22794 /* QuotaCore in Frameworks */ = {isa = PBXBuildFile; productRef = 235DE7E15AE7DAE285AD47E1 /* QuotaCore */; };
+		37C53B8C693ED65C8D035562 /* RefreshService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6C70CF971FAB2F004BA46230 /* RefreshService.swift */; };
+		46DE4A3F39FA263C41713AB3 /* OpenCodeQuotaWidgetExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 41F99209A4357B22E74BDB54 /* OpenCodeQuotaWidgetExtension.appex */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
+		60CECF8F084C5A5E121E9071 /* MyStatusWidgetBundle.swift in Sources */ = {isa = PBXBuildFile; fileRef = 649B142C4988C410B562ED0C /* MyStatusWidgetBundle.swift */; };
+		6EA2D0F9FA3D64F7CE438990 /* QuotaCore in Frameworks */ = {isa = PBXBuildFile; productRef = B526DA0D674BC4A2E5597F28 /* QuotaCore */; };
+		6EB2F0A46EE6A63A60B0BA4C /* MyStatusApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 182D28774152376A8DBBE5B9 /* MyStatusApp.swift */; };
+		97AA820C36AD6CF808C4B17F /* MyStatusQuotaWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = 78952D74C59518F41DE5162F /* MyStatusQuotaWidget.swift */; };
+		9C2270BBF6D777E15D8E0A6F /* SharedConstants.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2027582433C46E9082A2AEE7 /* SharedConstants.swift */; };
+		A8632273B324E7CC8644C54C /* AppModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = B464E10242B7A668A82271FB /* AppModel.swift */; };
+		C0942DA152F59B1313DA537F /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B8790595F5937C018326838F /* SettingsView.swift */; };
+		E4D02BB0D0B94A73D22B4182 /* OpenCodeCredentialLoader.swift in Sources */ = {isa = PBXBuildFile; fileRef = 985A580DDB4EA636B092D9B5 /* OpenCodeCredentialLoader.swift */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		18184D24AE45AD584E4C36DD /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 32B94F987D6E2A00F2780FF2 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 77485B5CA342AADC9EA1C259;
+			remoteInfo = OpenCodeQuotaWidgetExtension;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		A08343DEE7C607E576FFA571 /* Embed Foundation Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				46DE4A3F39FA263C41713AB3 /* OpenCodeQuotaWidgetExtension.appex in Embed Foundation Extensions */,
+			);
+			name = "Embed Foundation Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
+
+/* Begin PBXFileReference section */
+		182D28774152376A8DBBE5B9 /* MyStatusApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MyStatusApp.swift; sourceTree = "<group>"; };
+		2027582433C46E9082A2AEE7 /* SharedConstants.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SharedConstants.swift; sourceTree = "<group>"; };
+		41F99209A4357B22E74BDB54 /* OpenCodeQuotaWidgetExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = OpenCodeQuotaWidgetExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		649B142C4988C410B562ED0C /* MyStatusWidgetBundle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MyStatusWidgetBundle.swift; sourceTree = "<group>"; };
+		6C70CF971FAB2F004BA46230 /* RefreshService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RefreshService.swift; sourceTree = "<group>"; };
+		6EAEEA49A28910730F522443 /* QuotaTimelineProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QuotaTimelineProvider.swift; sourceTree = "<group>"; };
+		78952D74C59518F41DE5162F /* MyStatusQuotaWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MyStatusQuotaWidget.swift; sourceTree = "<group>"; };
+		985A580DDB4EA636B092D9B5 /* OpenCodeCredentialLoader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OpenCodeCredentialLoader.swift; sourceTree = "<group>"; };
+		B464E10242B7A668A82271FB /* AppModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppModel.swift; sourceTree = "<group>"; };
+		B8790595F5937C018326838F /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
+		C56B683D1E931C7A72F30B8A /* QuotaCore */ = {isa = PBXFileReference; lastKnownFileType = folder; name = QuotaCore; path = Packages/QuotaCore; sourceTree = SOURCE_ROOT; };
+		F49AF792487614A4DDDFA7F3 /* OpenCodeQuotaApp.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = OpenCodeQuotaApp.app; sourceTree = BUILT_PRODUCTS_DIR; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		118CEC367222B84442BC86A3 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				36C871A04E8D47A0E2A22794 /* QuotaCore in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		5F9D4F51B0294298E81EE9EC /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				6EA2D0F9FA3D64F7CE438990 /* QuotaCore in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		05425153BEA81BFD86CE9B8F /* Packages */ = {
+			isa = PBXGroup;
+			children = (
+				C56B683D1E931C7A72F30B8A /* QuotaCore */,
+			);
+			path = Packages;
+			sourceTree = "<group>";
+		};
+		1D56943A8DC02A537B9A3A32 = {
+			isa = PBXGroup;
+			children = (
+				3C999B33E7F81CCA7E3E1D87 /* MyStatusApp */,
+				A9C15C9D67B6BEF2A51F8E3C /* MyStatusWidgetExtension */,
+				05425153BEA81BFD86CE9B8F /* Packages */,
+				A17C3F88762C3B571540A813 /* Shared */,
+				6A29E79FE2BD6DFAE0C20194 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		3C999B33E7F81CCA7E3E1D87 /* MyStatusApp */ = {
+			isa = PBXGroup;
+			children = (
+				B464E10242B7A668A82271FB /* AppModel.swift */,
+				182D28774152376A8DBBE5B9 /* MyStatusApp.swift */,
+				3D03998B4400FB109157A0AB /* Services */,
+				AB34CC149DB23BB605E3CF8A /* Views */,
+			);
+			path = MyStatusApp;
+			sourceTree = "<group>";
+		};
+		3D03998B4400FB109157A0AB /* Services */ = {
+			isa = PBXGroup;
+			children = (
+				985A580DDB4EA636B092D9B5 /* OpenCodeCredentialLoader.swift */,
+				6C70CF971FAB2F004BA46230 /* RefreshService.swift */,
+			);
+			path = Services;
+			sourceTree = "<group>";
+		};
+		6A29E79FE2BD6DFAE0C20194 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				F49AF792487614A4DDDFA7F3 /* OpenCodeQuotaApp.app */,
+				41F99209A4357B22E74BDB54 /* OpenCodeQuotaWidgetExtension.appex */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		A17C3F88762C3B571540A813 /* Shared */ = {
+			isa = PBXGroup;
+			children = (
+				2027582433C46E9082A2AEE7 /* SharedConstants.swift */,
+			);
+			path = Shared;
+			sourceTree = "<group>";
+		};
+		A9C15C9D67B6BEF2A51F8E3C /* MyStatusWidgetExtension */ = {
+			isa = PBXGroup;
+			children = (
+				78952D74C59518F41DE5162F /* MyStatusQuotaWidget.swift */,
+				649B142C4988C410B562ED0C /* MyStatusWidgetBundle.swift */,
+				6EAEEA49A28910730F522443 /* QuotaTimelineProvider.swift */,
+			);
+			path = MyStatusWidgetExtension;
+			sourceTree = "<group>";
+		};
+		AB34CC149DB23BB605E3CF8A /* Views */ = {
+			isa = PBXGroup;
+			children = (
+				B8790595F5937C018326838F /* SettingsView.swift */,
+			);
+			path = Views;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		71B4BBA34BEE34DA7BD7B3D9 /* OpenCodeQuotaApp */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 2F61475D9D7955F9540A02EC /* Build configuration list for PBXNativeTarget "OpenCodeQuotaApp" */;
+			buildPhases = (
+				B91FD1325DB52B56699DEAAF /* Sources */,
+				5F9D4F51B0294298E81EE9EC /* Frameworks */,
+				A08343DEE7C607E576FFA571 /* Embed Foundation Extensions */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				E9A3B84A9BC253C7C3C65517 /* PBXTargetDependency */,
+			);
+			name = OpenCodeQuotaApp;
+			packageProductDependencies = (
+				B526DA0D674BC4A2E5597F28 /* QuotaCore */,
+			);
+			productName = OpenCodeQuotaApp;
+			productReference = F49AF792487614A4DDDFA7F3 /* OpenCodeQuotaApp.app */;
+			productType = "com.apple.product-type.application";
+		};
+		77485B5CA342AADC9EA1C259 /* OpenCodeQuotaWidgetExtension */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 7E8B075B89F8AE41C6863B91 /* Build configuration list for PBXNativeTarget "OpenCodeQuotaWidgetExtension" */;
+			buildPhases = (
+				2A2D83BB62F3B59E58E900A2 /* Sources */,
+				118CEC367222B84442BC86A3 /* Frameworks */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = OpenCodeQuotaWidgetExtension;
+			packageProductDependencies = (
+				235DE7E15AE7DAE285AD47E1 /* QuotaCore */,
+			);
+			productName = OpenCodeQuotaWidgetExtension;
+			productReference = 41F99209A4357B22E74BDB54 /* OpenCodeQuotaWidgetExtension.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		32B94F987D6E2A00F2780FF2 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = YES;
+				LastUpgradeCheck = 1430;
+				TargetAttributes = {
+					71B4BBA34BEE34DA7BD7B3D9 = {
+						DevelopmentTeam = 293A48LC7B;
+						ProvisioningStyle = Automatic;
+					};
+					77485B5CA342AADC9EA1C259 = {
+						DevelopmentTeam = 293A48LC7B;
+						ProvisioningStyle = Automatic;
+					};
+				};
+			};
+			buildConfigurationList = 5607A42F6A72FCD798730678 /* Build configuration list for PBXProject "OpenCodeQuota" */;
+			compatibilityVersion = "Xcode 14.0";
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				Base,
+				en,
+			);
+			mainGroup = 1D56943A8DC02A537B9A3A32;
+			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				DC1DA5B37CC7087BAEADCBC9 /* XCLocalSwiftPackageReference "Packages/QuotaCore" */,
+			);
+			preferredProjectObjectVersion = 77;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				71B4BBA34BEE34DA7BD7B3D9 /* OpenCodeQuotaApp */,
+				77485B5CA342AADC9EA1C259 /* OpenCodeQuotaWidgetExtension */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXSourcesBuildPhase section */
+		2A2D83BB62F3B59E58E900A2 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				97AA820C36AD6CF808C4B17F /* MyStatusQuotaWidget.swift in Sources */,
+				60CECF8F084C5A5E121E9071 /* MyStatusWidgetBundle.swift in Sources */,
+				35B47656D69608F756A3F5AA /* QuotaTimelineProvider.swift in Sources */,
+				15964F1307090DF95AEBE5B0 /* SharedConstants.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		B91FD1325DB52B56699DEAAF /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				A8632273B324E7CC8644C54C /* AppModel.swift in Sources */,
+				6EB2F0A46EE6A63A60B0BA4C /* MyStatusApp.swift in Sources */,
+				E4D02BB0D0B94A73D22B4182 /* OpenCodeCredentialLoader.swift in Sources */,
+				37C53B8C693ED65C8D035562 /* RefreshService.swift in Sources */,
+				C0942DA152F59B1313DA537F /* SettingsView.swift in Sources */,
+				9C2270BBF6D777E15D8E0A6F /* SharedConstants.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		E9A3B84A9BC253C7C3C65517 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 77485B5CA342AADC9EA1C259 /* OpenCodeQuotaWidgetExtension */;
+			targetProxy = 18184D24AE45AD584E4C36DD /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
+/* Begin XCBuildConfiguration section */
+		8F4A3A16EB0E8F2C19E7181C /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				APPLICATION_EXTENSION_API_ONLY = YES;
+				CODE_SIGN_ENTITLEMENTS = MyStatusWidgetExtension/MyStatusWidgetExtension.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				COMBINE_HIDPI_IMAGES = YES;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 293A48LC7B;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = MyStatusWidgetExtension/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+					"@executable_path/../../../../Frameworks",
+				);
+				MACOSX_DEPLOYMENT_TARGET = 14.0;
+				MARKETING_VERSION = 0.1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = ch.lkmc.opencodequota.app.widgetextension;
+				PRODUCT_NAME = OpenCodeQuotaWidgetExtension;
+				SDKROOT = macosx;
+				SKIP_INSTALL = YES;
+				SWIFT_VERSION = 5.1;
+			};
+			name = Debug;
+		};
+		9EBFD090980B7DB2B431AB44 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = MyStatusApp/MyStatusApp.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				COMBINE_HIDPI_IMAGES = YES;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 293A48LC7B;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = MyStatusApp/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				MACOSX_DEPLOYMENT_TARGET = 14.0;
+				MARKETING_VERSION = 0.1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = ch.lkmc.opencodequota.app;
+				PRODUCT_NAME = OpenCodeQuota;
+				SDKROOT = macosx;
+				SWIFT_VERSION = 5.1;
+			};
+			name = Debug;
+		};
+		A4CD99D38B3052D7E1432A4F /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 14.0;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = macosx;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				SWIFT_VERSION = 5.0;
+			};
+			name = Release;
+		};
+		ACB7F4A46674A9A5FFDC0841 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				APPLICATION_EXTENSION_API_ONLY = YES;
+				CODE_SIGN_ENTITLEMENTS = MyStatusWidgetExtension/MyStatusWidgetExtension.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				COMBINE_HIDPI_IMAGES = YES;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 293A48LC7B;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = MyStatusWidgetExtension/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+					"@executable_path/../../../../Frameworks",
+				);
+				MACOSX_DEPLOYMENT_TARGET = 14.0;
+				MARKETING_VERSION = 0.1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = ch.lkmc.opencodequota.app.widgetextension;
+				PRODUCT_NAME = OpenCodeQuotaWidgetExtension;
+				SDKROOT = macosx;
+				SKIP_INSTALL = YES;
+				SWIFT_VERSION = 5.1;
+			};
+			name = Release;
+		};
+		AFFE7E0B3C37EA1E50CCD47F /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"$(inherited)",
+					"DEBUG=1",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 14.0;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = macosx;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_VERSION = 5.0;
+			};
+			name = Debug;
+		};
+		DEE8E3E5F18D000995BFD6AE /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = MyStatusApp/MyStatusApp.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				COMBINE_HIDPI_IMAGES = YES;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 293A48LC7B;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = MyStatusApp/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				MACOSX_DEPLOYMENT_TARGET = 14.0;
+				MARKETING_VERSION = 0.1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = ch.lkmc.opencodequota.app;
+				PRODUCT_NAME = OpenCodeQuota;
+				SDKROOT = macosx;
+				SWIFT_VERSION = 5.1;
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		2F61475D9D7955F9540A02EC /* Build configuration list for PBXNativeTarget "OpenCodeQuotaApp" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				9EBFD090980B7DB2B431AB44 /* Debug */,
+				DEE8E3E5F18D000995BFD6AE /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		5607A42F6A72FCD798730678 /* Build configuration list for PBXProject "OpenCodeQuota" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				AFFE7E0B3C37EA1E50CCD47F /* Debug */,
+				A4CD99D38B3052D7E1432A4F /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		7E8B075B89F8AE41C6863B91 /* Build configuration list for PBXNativeTarget "OpenCodeQuotaWidgetExtension" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				8F4A3A16EB0E8F2C19E7181C /* Debug */,
+				ACB7F4A46674A9A5FFDC0841 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+/* End XCConfigurationList section */
+
+/* Begin XCLocalSwiftPackageReference section */
+		DC1DA5B37CC7087BAEADCBC9 /* XCLocalSwiftPackageReference "Packages/QuotaCore" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = Packages/QuotaCore;
+		};
+/* End XCLocalSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		235DE7E15AE7DAE285AD47E1 /* QuotaCore */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = QuotaCore;
+		};
+		B526DA0D674BC4A2E5597F28 /* QuotaCore */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = QuotaCore;
+		};
+/* End XCSwiftPackageProductDependency section */
+	};
+	rootObject = 32B94F987D6E2A00F2780FF2 /* Project object */;
+}
