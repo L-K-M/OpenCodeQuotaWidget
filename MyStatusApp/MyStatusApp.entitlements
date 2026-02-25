@@ -18,7 +18,6 @@
   <array>
     <string>.local/share/opencode/</string>
     <string>.config/opencode/</string>
-    <string>Library/Application Support/opencode/</string>
   </array>
 </dict>
 </plist>

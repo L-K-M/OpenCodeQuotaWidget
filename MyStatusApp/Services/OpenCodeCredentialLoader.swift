@@ -10,47 +10,59 @@ final class OpenCodeSandboxAccess {
   }
 
   private let defaults: UserDefaults
-  private let legacyDefaults: UserDefaults
 
-  init(defaults: UserDefaults? = nil, legacyDefaults: UserDefaults = .standard) {
-    if let defaults {
-      self.defaults = defaults
-    } else if let appGroupDefaults = UserDefaults(suiteName: SharedConstants.appGroupIdentifier) {
-      self.defaults = appGroupDefaults
-    } else {
-      self.defaults = legacyDefaults
-    }
+  private struct ResolvedAccess {
+    let url: URL
+    let requiresSecurityScope: Bool
+  }
 
-    self.legacyDefaults = legacyDefaults
+  init(defaults: UserDefaults = .standard) {
+    self.defaults = defaults
   }
 
   func saveBookmark(for key: BookmarkKey, url: URL) throws {
     let data = try url.bookmarkData(
-      options: [.withSecurityScope],
+      options: [.withSecurityScope, .securityScopeAllowOnlyReadAccess],
       includingResourceValuesForKeys: nil,
       relativeTo: nil
     )
+    let pathKey = bookmarkPathKey(for: key)
     defaults.set(data, forKey: key.rawValue)
-    legacyDefaults.set(data, forKey: key.rawValue)
+    defaults.set(url.path, forKey: pathKey)
   }
 
   func resolveURL(for key: BookmarkKey) -> URL? {
-    let primaryData = defaults.data(forKey: key.rawValue)
-    guard let data = primaryData ?? legacyDefaults.data(forKey: key.rawValue) else {
+    resolveAccess(for: key)?.url
+  }
+
+  func resolveCandidate(for key: BookmarkKey) -> (url: URL, requiresSecurityScope: Bool)? {
+    guard let resolved = resolveAccess(for: key) else {
       return nil
     }
+    return (resolved.url, resolved.requiresSecurityScope)
+  }
 
-    if primaryData == nil {
-      defaults.set(data, forKey: key.rawValue)
+  private func resolveAccess(for key: BookmarkKey) -> ResolvedAccess? {
+    let pathKey = bookmarkPathKey(for: key)
+    let fallbackPath = defaults.string(forKey: pathKey)
+    let primaryData = defaults.data(forKey: key.rawValue)
+    guard let data = primaryData else {
+      if let fallbackPath, isAllowedFallbackPath(fallbackPath, for: key) {
+        return ResolvedAccess(url: URL(fileURLWithPath: fallbackPath), requiresSecurityScope: false)
+      }
+      return nil
     }
 
     var stale = false
     guard let url = try? URL(
       resolvingBookmarkData: data,
-      options: [.withSecurityScope],
+      options: [.withSecurityScope, .withoutUI],
       relativeTo: nil,
       bookmarkDataIsStale: &stale
     ) else {
+      if let fallbackPath, isAllowedFallbackPath(fallbackPath, for: key) {
+        return ResolvedAccess(url: URL(fileURLWithPath: fallbackPath), requiresSecurityScope: false)
+      }
       return nil
     }
 
@@ -58,7 +70,42 @@ final class OpenCodeSandboxAccess {
       try? saveBookmark(for: key, url: url)
     }
 
-    return url
+    if !isAllowedFallbackPath(url.path, for: key) {
+      if let fallbackPath, isAllowedFallbackPath(fallbackPath, for: key) {
+        return ResolvedAccess(url: URL(fileURLWithPath: fallbackPath), requiresSecurityScope: false)
+      }
+
+      defaults.removeObject(forKey: key.rawValue)
+      defaults.removeObject(forKey: pathKey)
+      return nil
+    }
+
+    if fallbackPath == nil {
+      defaults.set(url.path, forKey: pathKey)
+    }
+
+    return ResolvedAccess(url: url, requiresSecurityScope: true)
+  }
+
+  func hasStoredBookmark(for key: BookmarkKey) -> Bool {
+    defaults.data(forKey: key.rawValue) != nil
+  }
+
+  private func bookmarkPathKey(for key: BookmarkKey) -> String {
+    "\(key.rawValue).path"
+  }
+
+  private func isAllowedFallbackPath(_ path: String, for key: BookmarkKey) -> Bool {
+    let normalized = path.lowercased()
+    switch key {
+    case .authFile:
+      return normalized.hasSuffix("/.local/share/opencode/auth.json")
+        || normalized.hasSuffix("/.config/opencode/auth.json")
+    case .antigravityFile:
+      return normalized.hasSuffix("/.config/opencode/antigravity-accounts.json")
+    case .copilotPATFile:
+      return normalized.hasSuffix("/.config/opencode/copilot-quota-token.json")
+    }
   }
 
   static func bookmarkKey(forFileName fileName: String) -> BookmarkKey? {
@@ -98,6 +145,11 @@ struct OpenCodeCredentialLoadResult {
 }
 
 final class OpenCodeCredentialLoader {
+  private struct CandidateURL {
+    let url: URL
+    let requiresSecurityScope: Bool
+  }
+
   private struct JSONLookup {
     let object: [String: Any]?
     let sourceSummary: String
@@ -356,28 +408,36 @@ final class OpenCodeCredentialLoader {
     return (credentials, parts.joined(separator: " + "))
   }
 
-  private func loadJSONFromCandidates(_ candidates: [URL], label: String) -> JSONLookup {
-    let uniqueCandidates = uniquePaths(candidates)
+  private func loadJSONFromCandidates(_ candidates: [CandidateURL], label: String) -> JSONLookup {
+    let uniqueCandidates = uniqueCandidates(candidates)
+    if uniqueCandidates.isEmpty {
+      return JSONLookup(
+        object: nil,
+        sourceSummary: "No \(label) file found",
+        diagnostics: "No granted file access for \(label). Use Grant File Access."
+      )
+    }
+
     var existingFileErrors: [String] = []
     var checkedPaths: [String] = []
 
-    for url in uniqueCandidates {
+    for candidate in uniqueCandidates {
+      let url = candidate.url
       let path = url.path
       checkedPaths.append(path)
 
-      let scoped = url.startAccessingSecurityScopedResource()
+      let scoped = candidate.requiresSecurityScope && url.startAccessingSecurityScopedResource()
       defer {
         if scoped {
           url.stopAccessingSecurityScopedResource()
         }
       }
 
-      var isDirectory = ObjCBool(false)
-      guard fileManager.fileExists(atPath: path, isDirectory: &isDirectory), !isDirectory.boolValue else {
-        continue
-      }
-
       do {
+        if (try? url.resourceValues(forKeys: [.isDirectoryKey]).isDirectory) == true {
+          continue
+        }
+
         let data = try Data(contentsOf: url)
         let object = try JSONSerialization.jsonObject(with: data)
         guard let dictionary = object as? [String: Any] else {
@@ -391,10 +451,14 @@ final class OpenCodeCredentialLoader {
           diagnostics: "Loaded \(label) from \(path)"
         )
       } catch {
-        if fileManager.isReadableFile(atPath: path) {
+        if fileManager.fileExists(atPath: path) || scoped {
+          if fileManager.isReadableFile(atPath: path) {
+            existingFileErrors.append("\(path): \(error.localizedDescription)")
+          } else {
+            existingFileErrors.append("\(path): file exists but is not readable (sandbox/permissions)")
+          }
+        } else if (error as NSError).code != NSFileReadNoSuchFileError {
           existingFileErrors.append("\(path): \(error.localizedDescription)")
-        } else {
-          existingFileErrors.append("\(path): file exists but is not readable (sandbox/permissions)")
         }
       }
     }
@@ -414,6 +478,26 @@ final class OpenCodeCredentialLoader {
     )
   }
 
+  private func uniqueCandidates(_ candidates: [CandidateURL]) -> [CandidateURL] {
+    var merged: [String: CandidateURL] = [:]
+    var order: [String] = []
+
+    for candidate in candidates {
+      let key = candidate.url.path
+      if let existing = merged[key] {
+        merged[key] = CandidateURL(
+          url: existing.url,
+          requiresSecurityScope: existing.requiresSecurityScope || candidate.requiresSecurityScope
+        )
+      } else {
+        merged[key] = candidate
+        order.append(key)
+      }
+    }
+
+    return order.compactMap { merged[$0] }
+  }
+
   private func uniquePaths(_ urls: [URL]) -> [URL] {
     var seen: Set<String> = []
     var output: [URL] = []
@@ -430,66 +514,86 @@ final class OpenCodeCredentialLoader {
     return output
   }
 
-  private func authCandidates() -> [URL] {
-    var urls: [URL] = []
+  private func authCandidates() -> [CandidateURL] {
+    var candidates: [CandidateURL] = []
 
-    if let bookmarked = sandboxAccess.resolveURL(for: .authFile) {
-      urls.append(bookmarked)
-    }
-
-    urls.append(contentsOf: allHomePaths(".local/share/opencode/auth.json"))
-    urls.append(contentsOf: allHomePaths(".config/opencode/auth.json"))
-    urls.append(contentsOf: allHomePaths("Library/Application Support/opencode/auth.json"))
+    candidates.append(contentsOf: allHomePaths(".local/share/opencode/auth.json").map {
+      CandidateURL(url: $0, requiresSecurityScope: false)
+    })
+    candidates.append(contentsOf: allHomePaths(".config/opencode/auth.json").map {
+      CandidateURL(url: $0, requiresSecurityScope: false)
+    })
 
     if let xdgData = xdgPath(envKey: "XDG_DATA_HOME", tail: "opencode/auth.json") {
-      urls.append(xdgData)
+      candidates.append(CandidateURL(url: xdgData, requiresSecurityScope: false))
     }
 
     if let xdgConfig = xdgPath(envKey: "XDG_CONFIG_HOME", tail: "opencode/auth.json") {
-      urls.append(xdgConfig)
+      candidates.append(CandidateURL(url: xdgConfig, requiresSecurityScope: false))
     }
 
-    return urls
+    if let resolved = sandboxAccess.resolveCandidate(for: .authFile) {
+      candidates.append(
+        CandidateURL(
+          url: resolved.url,
+          requiresSecurityScope: resolved.requiresSecurityScope
+        )
+      )
+    }
+
+    return candidates
   }
 
-  private func antigravityCandidates() -> [URL] {
-    var urls: [URL] = []
+  private func antigravityCandidates() -> [CandidateURL] {
+    var candidates: [CandidateURL] = []
 
-    if let bookmarked = sandboxAccess.resolveURL(for: .antigravityFile) {
-      urls.append(bookmarked)
-    }
-
-    urls.append(contentsOf: allHomePaths(".config/opencode/antigravity-accounts.json"))
-    urls.append(contentsOf: allHomePaths("Library/Application Support/opencode/antigravity-accounts.json"))
+    candidates.append(contentsOf: allHomePaths(".config/opencode/antigravity-accounts.json").map {
+      CandidateURL(url: $0, requiresSecurityScope: false)
+    })
 
     if let xdgConfig = xdgPath(
       envKey: "XDG_CONFIG_HOME",
       tail: "opencode/antigravity-accounts.json"
     ) {
-      urls.append(xdgConfig)
+      candidates.append(CandidateURL(url: xdgConfig, requiresSecurityScope: false))
     }
 
-    return urls
+    if let resolved = sandboxAccess.resolveCandidate(for: .antigravityFile) {
+      candidates.append(
+        CandidateURL(
+          url: resolved.url,
+          requiresSecurityScope: resolved.requiresSecurityScope
+        )
+      )
+    }
+
+    return candidates
   }
 
-  private func copilotPATCandidates() -> [URL] {
-    var urls: [URL] = []
+  private func copilotPATCandidates() -> [CandidateURL] {
+    var candidates: [CandidateURL] = []
 
-    if let bookmarked = sandboxAccess.resolveURL(for: .copilotPATFile) {
-      urls.append(bookmarked)
-    }
-
-    urls.append(contentsOf: allHomePaths(".config/opencode/copilot-quota-token.json"))
-    urls.append(contentsOf: allHomePaths("Library/Application Support/opencode/copilot-quota-token.json"))
+    candidates.append(contentsOf: allHomePaths(".config/opencode/copilot-quota-token.json").map {
+      CandidateURL(url: $0, requiresSecurityScope: false)
+    })
 
     if let xdgConfig = xdgPath(
       envKey: "XDG_CONFIG_HOME",
       tail: "opencode/copilot-quota-token.json"
     ) {
-      urls.append(xdgConfig)
+      candidates.append(CandidateURL(url: xdgConfig, requiresSecurityScope: false))
     }
 
-    return urls
+    if let resolved = sandboxAccess.resolveCandidate(for: .copilotPATFile) {
+      candidates.append(
+        CandidateURL(
+          url: resolved.url,
+          requiresSecurityScope: resolved.requiresSecurityScope
+        )
+      )
+    }
+
+    return candidates
   }
 
   private func xdgPath(envKey: String, tail: String) -> URL? {
