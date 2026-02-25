@@ -2,24 +2,104 @@ import SwiftUI
 import QuotaCore
 
 struct SettingsView: View {
+  private enum SettingsTab: Hashable {
+    case general
+    case provider(QuotaProvider)
+  }
+
   @ObservedObject var model: AppModel
+  @State private var selectedTab: SettingsTab = .general
   private let providers = Array(QuotaProvider.allCases)
 
   var body: some View {
-    TabView {
-      generalTab
-        .tabItem {
-          Label("General", systemImage: "gearshape")
-        }
-
-      ForEach(providers, id: \.rawValue) { (provider: QuotaProvider) in
-        providerTab(for: provider)
-          .tabItem {
-            Label(provider.displayName, systemImage: iconName(for: provider))
-          }
-      }
+    VStack(spacing: 0) {
+      tabsHeader
+      currentTabContent
     }
     .navigationTitle("OpenCodeQuota")
+  }
+
+  private var tabsHeader: some View {
+    ScrollView(.horizontal, showsIndicators: false) {
+      HStack(spacing: 0) {
+        tabButton(for: .general, title: "General")
+
+        ForEach(providers, id: \.rawValue) { (provider: QuotaProvider) in
+          tabButton(
+            for: .provider(provider),
+            title: tabTitle(for: provider),
+            provider: provider
+          )
+        }
+      }
+      .padding(.horizontal, 14)
+      .padding(.top, 10)
+      .padding(.bottom, -1)
+    }
+    .background(.regularMaterial)
+    .overlay(alignment: .bottom) {
+      Rectangle()
+        .fill(Color.secondary.opacity(0.24))
+        .frame(height: 1)
+    }
+  }
+
+  @ViewBuilder
+  private var currentTabContent: some View {
+    switch selectedTab {
+    case .general:
+      generalTab
+    case .provider(let provider):
+      providerTab(for: provider)
+    }
+  }
+
+  private func tabButton(
+    for tab: SettingsTab,
+    title: String,
+    provider: QuotaProvider? = nil
+  ) -> some View {
+    let isSelected = selectedTab == tab
+
+    return Button {
+      selectedTab = tab
+    } label: {
+      HStack(spacing: 6) {
+        if let provider {
+          Circle()
+            .fill(tabDotColor(for: provider))
+            .frame(width: 6, height: 6)
+        }
+
+        Text(title)
+          .font(.system(size: 14, weight: .semibold))
+      }
+      .padding(.horizontal, 14)
+      .padding(.vertical, 7)
+      .background {
+        if isSelected {
+          TopTabFillShape(cornerRadius: 9)
+            .fill(.background)
+        }
+      }
+      .overlay {
+        if isSelected {
+          TopTabBorderShape(cornerRadius: 9)
+            .stroke(Color.secondary.opacity(0.38), lineWidth: 1)
+        }
+      }
+      .overlay(alignment: .bottom) {
+        if isSelected {
+          Rectangle()
+            .fill(.background)
+            .frame(height: 2)
+            .offset(y: 1)
+        }
+      }
+      .padding(.trailing, 4)
+    }
+    .buttonStyle(.plain)
+    .foregroundStyle(isSelected ? Color.primary : Color.secondary.opacity(0.92))
   }
 
   private var generalTab: some View {
@@ -27,7 +107,6 @@ struct SettingsView: View {
       VStack(alignment: .leading, spacing: 20) {
         header
         refreshSection
-        providerOverviewSection
         actionSection
         snapshotSection
       }
@@ -51,42 +130,6 @@ struct SettingsView: View {
         .font(.caption)
         .foregroundStyle(.secondary)
     }
-  }
-
-  private var providerOverviewSection: some View {
-    VStack(alignment: .leading, spacing: 12) {
-      Text("Provider Overview")
-        .font(.headline)
-
-      ForEach(providers, id: \.rawValue) { (provider: QuotaProvider) in
-        let status = model.status(for: provider)
-        let enabled = model.providerEnabled[provider] ?? true
-
-        HStack(alignment: .top, spacing: 10) {
-          Circle()
-            .fill((status?.available ?? false) ? Color.green : Color.orange)
-            .frame(width: 8, height: 8)
-            .padding(.top, 5)
-
-          VStack(alignment: .leading, spacing: 2) {
-            HStack {
-              Text(provider.displayName)
-                .font(.subheadline.weight(.medium))
-              Spacer()
-              Text(enabled ? "Enabled" : "Disabled")
-                .font(.caption)
-                .foregroundStyle(enabled ? Color.secondary : Color.orange)
-            }
-
-            Text(status?.detail ?? "No status available")
-              .font(.caption)
-              .foregroundStyle(.secondary)
-          }
-        }
-      }
-    }
-    .padding(16)
-    .background(.quaternary, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
   }
 
   private var refreshSection: some View {
@@ -187,18 +230,22 @@ struct SettingsView: View {
     .background(.quaternary, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
   }
 
-  private func iconName(for provider: QuotaProvider) -> String {
+  private func tabDotColor(for provider: QuotaProvider) -> Color {
+    (model.status(for: provider)?.available ?? false) ? .green : .red
+  }
+
+  private func tabTitle(for provider: QuotaProvider) -> String {
     switch provider {
     case .openAI:
-      return "sparkles"
+      return "OpenAI"
     case .zhipu:
-      return "bubble.left.and.bubble.right"
+      return "Zhipu"
     case .zai:
-      return "bolt"
+      return "Z.ai"
     case .googleAntigravity:
-      return "cloud"
+      return "Google"
     case .gitHubCopilot:
-      return "chevron.left.forwardslash.chevron.right"
+      return "Copilot"
     }
   }
 
@@ -328,5 +375,53 @@ struct SettingsView: View {
     }
     .padding(16)
     .background(.quaternary, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+  }
+}
+
+private struct TopTabFillShape: Shape {
+  var cornerRadius: CGFloat
+
+  func path(in rect: CGRect) -> Path {
+    let radius = max(0, min(cornerRadius, rect.width / 2, rect.height))
+
+    var path = Path()
+    path.move(to: CGPoint(x: rect.minX, y: rect.maxY))
+    path.addLine(to: CGPoint(x: rect.minX, y: rect.minY + radius))
+    path.addQuadCurve(
+      to: CGPoint(x: rect.minX + radius, y: rect.minY),
+      control: CGPoint(x: rect.minX, y: rect.minY)
+    )
+    path.addLine(to: CGPoint(x: rect.maxX - radius, y: rect.minY))
+    path.addQuadCurve(
+      to: CGPoint(x: rect.maxX, y: rect.minY + radius),
+      control: CGPoint(x: rect.maxX, y: rect.minY)
+    )
+    path.addLine(to: CGPoint(x: rect.maxX, y: rect.maxY))
+    path.addLine(to: CGPoint(x: rect.minX, y: rect.maxY))
+    path.closeSubpath()
+    return path
+  }
+}
+
+private struct TopTabBorderShape: Shape {
+  var cornerRadius: CGFloat
+
+  func path(in rect: CGRect) -> Path {
+    let radius = max(0, min(cornerRadius, rect.width / 2, rect.height))
+
+    var path = Path()
+    path.move(to: CGPoint(x: rect.minX, y: rect.maxY))
+    path.addLine(to: CGPoint(x: rect.minX, y: rect.minY + radius))
+    path.addQuadCurve(
+      to: CGPoint(x: rect.minX + radius, y: rect.minY),
+      control: CGPoint(x: rect.minX, y: rect.minY)
+    )
+    path.addLine(to: CGPoint(x: rect.maxX - radius, y: rect.minY))
+    path.addQuadCurve(
+      to: CGPoint(x: rect.maxX, y: rect.minY + radius),
+      control: CGPoint(x: rect.maxX, y: rect.minY)
+    )
+    path.addLine(to: CGPoint(x: rect.maxX, y: rect.maxY))
+    return path
   }
 }

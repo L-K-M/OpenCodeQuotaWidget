@@ -15,7 +15,7 @@ struct OpenCodeQuotaApp: App {
   var body: some Scene {
     WindowGroup {
       SettingsView(model: model)
-        .frame(minWidth: 780, minHeight: 760)
+        .frame(minWidth: 920, minHeight: 760)
         .task {
           await model.bootstrap()
         }
