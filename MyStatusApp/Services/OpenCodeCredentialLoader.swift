@@ -10,9 +10,18 @@ final class OpenCodeSandboxAccess {
   }
 
   private let defaults: UserDefaults
+  private let legacyDefaults: UserDefaults
 
-  init(defaults: UserDefaults = .standard) {
-    self.defaults = defaults
+  init(defaults: UserDefaults? = nil, legacyDefaults: UserDefaults = .standard) {
+    if let defaults {
+      self.defaults = defaults
+    } else if let appGroupDefaults = UserDefaults(suiteName: SharedConstants.appGroupIdentifier) {
+      self.defaults = appGroupDefaults
+    } else {
+      self.defaults = legacyDefaults
+    }
+
+    self.legacyDefaults = legacyDefaults
   }
 
   func saveBookmark(for key: BookmarkKey, url: URL) throws {
@@ -22,11 +31,17 @@ final class OpenCodeSandboxAccess {
       relativeTo: nil
     )
     defaults.set(data, forKey: key.rawValue)
+    legacyDefaults.set(data, forKey: key.rawValue)
   }
 
   func resolveURL(for key: BookmarkKey) -> URL? {
-    guard let data = defaults.data(forKey: key.rawValue) else {
+    let primaryData = defaults.data(forKey: key.rawValue)
+    guard let data = primaryData ?? legacyDefaults.data(forKey: key.rawValue) else {
       return nil
+    }
+
+    if primaryData == nil {
+      defaults.set(data, forKey: key.rawValue)
     }
 
     var stale = false
@@ -350,19 +365,19 @@ final class OpenCodeCredentialLoader {
       let path = url.path
       checkedPaths.append(path)
 
+      let scoped = url.startAccessingSecurityScopedResource()
+      defer {
+        if scoped {
+          url.stopAccessingSecurityScopedResource()
+        }
+      }
+
       var isDirectory = ObjCBool(false)
       guard fileManager.fileExists(atPath: path, isDirectory: &isDirectory), !isDirectory.boolValue else {
         continue
       }
 
       do {
-        let scoped = url.startAccessingSecurityScopedResource()
-        defer {
-          if scoped {
-            url.stopAccessingSecurityScopedResource()
-          }
-        }
-
         let data = try Data(contentsOf: url)
         let object = try JSONSerialization.jsonObject(with: data)
         guard let dictionary = object as? [String: Any] else {
