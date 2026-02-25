@@ -354,13 +354,22 @@ final class AppModel: ObservableObject {
 
   @discardableResult
   private func syncSnapshotToWidgetStore(_ snapshot: QuotaSnapshot) -> Bool {
-    guard !widgetSyncBlocked else { return false }
-    guard let appGroupStore = appGroupSnapshotStore() else { return false }
+    guard !widgetSyncBlocked else {
+      print("[OpenCodeQuota] Widget sync blocked (previous failure)")
+      return false
+    }
+    guard let appGroupStore = appGroupSnapshotStore() else {
+      print("[OpenCodeQuota] Widget sync failed: no App Group store available")
+      return false
+    }
 
     do {
       try appGroupStore.save(snapshot)
+      print("[OpenCodeQuota] Snapshot synced to widget store successfully")
+      print("[OpenCodeQuota] Debug info:\n\(appGroupStore.debugInfo())")
       return true
     } catch {
+      print("[OpenCodeQuota] Widget sync failed: \(error.localizedDescription)")
       widgetSyncBlocked = true
       return false
     }
@@ -382,16 +391,19 @@ final class AppModel: ObservableObject {
     }
     resolvedAppGroupStores = true
 
-    guard
-      let settingsURL = try? SharedPaths.settingsFileURL(),
-      let snapshotURL = try? SharedPaths.snapshotFileURL()
-    else {
+    do {
+      let settingsURL = try SharedPaths.settingsFileURL()
+      let snapshotURL = try SharedPaths.snapshotFileURL()
+      cachedAppGroupSettingsStore = SettingsStore(fileURL: settingsURL)
+      cachedAppGroupSnapshotStore = SnapshotStore(
+        fileURL: snapshotURL,
+        appGroupIdentifier: SharedConstants.appGroupIdentifier
+      )
+      print("[OpenCodeQuota] App Group container resolved: \(snapshotURL.deletingLastPathComponent().path)")
+    } catch {
+      print("[OpenCodeQuota] Failed to resolve App Group container: \(error.localizedDescription)")
       widgetSyncBlocked = true
-      return
     }
-
-    cachedAppGroupSettingsStore = SettingsStore(fileURL: settingsURL)
-    cachedAppGroupSnapshotStore = SnapshotStore(fileURL: snapshotURL)
   }
 
   private func reloadWidgetTimelines() {

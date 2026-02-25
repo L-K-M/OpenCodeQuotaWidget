@@ -17,7 +17,6 @@ targets:
       - path: MyStatusApp
         excludes:
           - Info.plist
-          - "*.entitlements"
       - path: Shared
     dependencies:
       - package: QuotaCore
@@ -57,7 +56,6 @@ targets:
       - path: MyStatusWidgetExtension
         excludes:
           - Info.plist
-          - "*.entitlements"
       - path: Shared
     dependencies:
       - package: QuotaCore

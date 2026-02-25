@@ -49,7 +49,9 @@
 /* Begin PBXFileReference section */
 		182D28774152376A8DBBE5B9 /* MyStatusApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MyStatusApp.swift; sourceTree = "<group>"; };
 		2027582433C46E9082A2AEE7 /* SharedConstants.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SharedConstants.swift; sourceTree = "<group>"; };
+		31322484BB13E80FCCFEAFF9 /* MyStatusWidgetExtension.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = MyStatusWidgetExtension.entitlements; sourceTree = "<group>"; };
 		41F99209A4357B22E74BDB54 /* OpenCodeQuotaWidgetExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = OpenCodeQuotaWidgetExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		44B0E224857A509415701234 /* MyStatusApp.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = MyStatusApp.entitlements; sourceTree = "<group>"; };
 		649B142C4988C410B562ED0C /* MyStatusWidgetBundle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MyStatusWidgetBundle.swift; sourceTree = "<group>"; };
 		6C70CF971FAB2F004BA46230 /* RefreshService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RefreshService.swift; sourceTree = "<group>"; };
 		6EAEEA49A28910730F522443 /* QuotaTimelineProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QuotaTimelineProvider.swift; sourceTree = "<group>"; };
@@ -104,6 +106,7 @@
 			isa = PBXGroup;
 			children = (
 				B464E10242B7A668A82271FB /* AppModel.swift */,
+				44B0E224857A509415701234 /* MyStatusApp.entitlements */,
 				182D28774152376A8DBBE5B9 /* MyStatusApp.swift */,
 				3D03998B4400FB109157A0AB /* Services */,
 				AB34CC149DB23BB605E3CF8A /* Views */,
@@ -142,6 +145,7 @@
 			children = (
 				78952D74C59518F41DE5162F /* MyStatusQuotaWidget.swift */,
 				649B142C4988C410B562ED0C /* MyStatusWidgetBundle.swift */,
+				31322484BB13E80FCCFEAFF9 /* MyStatusWidgetExtension.entitlements */,
 				6EAEEA49A28910730F522443 /* QuotaTimelineProvider.swift */,
 			);
 			path = MyStatusWidgetExtension;
