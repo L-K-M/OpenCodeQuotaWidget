@@ -42,14 +42,8 @@ final class OpenCodeSandboxAccess {
     return (resolved.url, resolved.requiresSecurityScope)
   }
 
-  private func resolveAccess(for key: BookmarkKey) -> ResolvedAccess? {
-    let pathKey = bookmarkPathKey(for: key)
-    let fallbackPath = defaults.string(forKey: pathKey)
-    let primaryData = defaults.data(forKey: key.rawValue)
-    guard let data = primaryData else {
-      if let fallbackPath, isAllowedFallbackPath(fallbackPath, for: key) {
-        return ResolvedAccess(url: URL(fileURLWithPath: fallbackPath), requiresSecurityScope: false)
-      }
+  func resolveBookmarkedURL(for key: BookmarkKey) -> URL? {
+    guard let data = defaults.data(forKey: key.rawValue) else {
       return nil
     }
 
@@ -60,9 +54,12 @@ final class OpenCodeSandboxAccess {
       relativeTo: nil,
       bookmarkDataIsStale: &stale
     ) else {
-      if let fallbackPath, isAllowedFallbackPath(fallbackPath, for: key) {
-        return ResolvedAccess(url: URL(fileURLWithPath: fallbackPath), requiresSecurityScope: false)
-      }
+      defaults.removeObject(forKey: key.rawValue)
+      return nil
+    }
+
+    guard isAllowedFallbackPath(url.path, for: key) else {
+      defaults.removeObject(forKey: key.rawValue)
       return nil
     }
 
@@ -70,25 +67,21 @@ final class OpenCodeSandboxAccess {
       try? saveBookmark(for: key, url: url)
     }
 
-    if !isAllowedFallbackPath(url.path, for: key) {
-      if let fallbackPath, isAllowedFallbackPath(fallbackPath, for: key) {
-        return ResolvedAccess(url: URL(fileURLWithPath: fallbackPath), requiresSecurityScope: false)
-      }
-
-      defaults.removeObject(forKey: key.rawValue)
-      defaults.removeObject(forKey: pathKey)
-      return nil
-    }
-
-    if fallbackPath == nil {
-      defaults.set(url.path, forKey: pathKey)
-    }
-
-    return ResolvedAccess(url: url, requiresSecurityScope: true)
+    return url
   }
 
-  func hasStoredBookmark(for key: BookmarkKey) -> Bool {
-    defaults.data(forKey: key.rawValue) != nil
+  private func resolveAccess(for key: BookmarkKey) -> ResolvedAccess? {
+    let pathKey = bookmarkPathKey(for: key)
+    let storedPath = defaults.string(forKey: pathKey)
+    let fallbackPath: String
+    if let storedPath, isAllowedFallbackPath(storedPath, for: key) {
+      fallbackPath = storedPath
+    } else {
+      fallbackPath = inferredFallbackPath(for: key)
+      defaults.set(fallbackPath, forKey: pathKey)
+    }
+
+    return ResolvedAccess(url: URL(fileURLWithPath: fallbackPath), requiresSecurityScope: false)
   }
 
   private func bookmarkPathKey(for key: BookmarkKey) -> String {
@@ -105,6 +98,18 @@ final class OpenCodeSandboxAccess {
       return normalized.hasSuffix("/.config/opencode/antigravity-accounts.json")
     case .copilotPATFile:
       return normalized.hasSuffix("/.config/opencode/copilot-quota-token.json")
+    }
+  }
+
+  private func inferredFallbackPath(for key: BookmarkKey) -> String {
+    let home = NSHomeDirectory()
+    switch key {
+    case .authFile:
+      return "\(home)/.local/share/opencode/auth.json"
+    case .antigravityFile:
+      return "\(home)/.config/opencode/antigravity-accounts.json"
+    case .copilotPATFile:
+      return "\(home)/.config/opencode/copilot-quota-token.json"
     }
   }
 
@@ -483,13 +488,8 @@ final class OpenCodeCredentialLoader {
     var order: [String] = []
 
     for candidate in candidates {
-      let key = candidate.url.path
-      if let existing = merged[key] {
-        merged[key] = CandidateURL(
-          url: existing.url,
-          requiresSecurityScope: existing.requiresSecurityScope || candidate.requiresSecurityScope
-        )
-      } else {
+      let key = "\(candidate.url.path)|\(candidate.requiresSecurityScope ? "scoped" : "direct")"
+      if merged[key] == nil {
         merged[key] = candidate
         order.append(key)
       }
@@ -541,6 +541,10 @@ final class OpenCodeCredentialLoader {
       )
     }
 
+    if let bookmarked = sandboxAccess.resolveBookmarkedURL(for: .authFile) {
+      candidates.append(CandidateURL(url: bookmarked, requiresSecurityScope: true))
+    }
+
     return candidates
   }
 
@@ -567,6 +571,10 @@ final class OpenCodeCredentialLoader {
       )
     }
 
+    if let bookmarked = sandboxAccess.resolveBookmarkedURL(for: .antigravityFile) {
+      candidates.append(CandidateURL(url: bookmarked, requiresSecurityScope: true))
+    }
+
     return candidates
   }
 
@@ -591,6 +599,10 @@ final class OpenCodeCredentialLoader {
           requiresSecurityScope: resolved.requiresSecurityScope
         )
       )
+    }
+
+    if let bookmarked = sandboxAccess.resolveBookmarkedURL(for: .copilotPATFile) {
+      candidates.append(CandidateURL(url: bookmarked, requiresSecurityScope: true))
     }
 
     return candidates

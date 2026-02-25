@@ -25,18 +25,12 @@ final class AppModel: ObservableObject {
   private let sandboxAccess: OpenCodeSandboxAccess
 
   init() {
-    let urls: (settings: URL, snapshot: URL) = {
-      do {
-        return (try SharedPaths.settingsFileURL(), try SharedPaths.snapshotFileURL())
-      } catch {
-        let fallback = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first
-          ?? FileManager.default.temporaryDirectory
-        return (
-          fallback.appendingPathComponent(SharedConstants.settingsFileName),
-          fallback.appendingPathComponent(SharedConstants.snapshotFileName)
-        )
-      }
-    }()
+    let baseDirectory = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first
+      ?? FileManager.default.temporaryDirectory
+    let urls: (settings: URL, snapshot: URL) = (
+      baseDirectory.appendingPathComponent(SharedConstants.settingsFileName),
+      baseDirectory.appendingPathComponent(SharedConstants.snapshotFileName)
+    )
 
     let settingsStore = SettingsStore(fileURL: urls.settings)
     let snapshotStore = SnapshotStore(fileURL: urls.snapshot)
@@ -67,15 +61,6 @@ final class AppModel: ObservableObject {
     }
 
     reloadCredentialStatuses()
-    let settingsSynced = syncSettingsToWidgetStore(currentSettings())
-    var snapshotSynced = true
-    if let snapshot {
-      snapshotSynced = syncSnapshotToWidgetStore(snapshot)
-    }
-    if !settingsSynced || !snapshotSynced {
-      statusMessage = "Widget sync unavailable (App Group access missing)."
-    }
-    reloadWidgetTimelines()
   }
 
   func loadConfiguration() async {
@@ -326,24 +311,10 @@ final class AppModel: ObservableObject {
   }
 
   private func loadSettingsFromPreferredStore() throws -> AppSettings {
-    if
-      let appGroupURL = try? SharedPaths.settingsFileURL(),
-      FileManager.default.fileExists(atPath: appGroupURL.path)
-    {
-      return try SettingsStore(fileURL: appGroupURL).load()
-    }
-
     return try settingsStore.load()
   }
 
   private func loadSnapshotFromPreferredStore() throws -> QuotaSnapshot? {
-    if
-      let appGroupURL = try? SharedPaths.snapshotFileURL(),
-      FileManager.default.fileExists(atPath: appGroupURL.path)
-    {
-      return try SnapshotStore(fileURL: appGroupURL).load()
-    }
-
     return try snapshotStore.load()
   }
 
