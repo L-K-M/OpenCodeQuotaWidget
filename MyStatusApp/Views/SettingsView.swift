@@ -20,28 +20,29 @@ struct SettingsView: View {
   }
 
   private var tabsHeader: some View {
-    ScrollView(.horizontal, showsIndicators: false) {
-      HStack(spacing: 0) {
-        tabButton(for: .general, title: "General")
-
-        ForEach(providers, id: \.rawValue) { (provider: QuotaProvider) in
-          tabButton(
-            for: .provider(provider),
-            title: tabTitle(for: provider),
-            provider: provider
-          )
-        }
-      }
-      .padding(.horizontal, 14)
-      .padding(.top, 10)
-      .padding(.bottom, -1)
-    }
-    .background(.regularMaterial)
-    .overlay(alignment: .bottom) {
+    ZStack(alignment: .bottom) {
       Rectangle()
         .fill(Color.secondary.opacity(0.24))
         .frame(height: 1)
+
+      ScrollView(.horizontal, showsIndicators: false) {
+        HStack(spacing: 0) {
+          tabButton(for: .general, title: "General")
+
+          ForEach(providers, id: \.rawValue) { (provider: QuotaProvider) in
+            tabButton(
+              for: .provider(provider),
+              title: tabTitle(for: provider),
+              provider: provider
+            )
+          }
+        }
+        .padding(.horizontal, 14)
+        .padding(.top, 10)
+        .padding(.bottom, -1)
+      }
     }
+    .background(.regularMaterial)
   }
 
   @ViewBuilder
