@@ -228,6 +228,7 @@ public struct WidgetStyleSettings: Codable, Hashable, Sendable {
 
   public func encode(to encoder: Encoder) throws {
     var container = encoder.container(keyedBy: CodingKeys.self)
+    try container.encode(backgroundStyle != .system, forKey: .showBackground)
     try container.encode(backgroundStyle, forKey: .backgroundStyle)
     try container.encode(ringPalette, forKey: .ringPalette)
   }
@@ -309,18 +310,18 @@ public struct AppSettings: Codable, Hashable, Sendable {
   public init(from decoder: Decoder) throws {
     let container = try decoder.container(keyedBy: CodingKeys.self)
 
-    refreshIntervalMinutes = try container.decodeIfPresent(Int.self, forKey: .refreshIntervalMinutes) ?? 30
+    refreshIntervalMinutes = (try? container.decodeIfPresent(Int.self, forKey: .refreshIntervalMinutes)) ?? 30
 
-    let decodedProviders = try container.decodeIfPresent([ProviderSettings].self, forKey: .providers)
+    let decodedProviders = (try? container.decodeIfPresent([ProviderSettings].self, forKey: .providers))
       ?? QuotaProvider.allCases.map { ProviderSettings(provider: $0, isEnabled: true) }
     providers = AppSettings.normalizedProviderSettings(decodedProviders)
 
-    widgetStyle = try container.decodeIfPresent(WidgetStyleSettings.self, forKey: .widgetStyle) ?? .default
+    widgetStyle = (try? container.decodeIfPresent(WidgetStyleSettings.self, forKey: .widgetStyle)) ?? .default
 
-    let decodedStyleSettings = try container.decodeIfPresent(
+    let decodedStyleSettings = (try? container.decodeIfPresent(
       [ProviderStyleSettings].self,
       forKey: .providerStyleSettings
-    ) ?? AppSettings.defaultProviderStyleSettings()
+    )) ?? AppSettings.defaultProviderStyleSettings()
     providerStyleSettings = AppSettings.normalizedProviderStyleSettings(
       decodedStyleSettings,
       fallbackStyle: widgetStyle

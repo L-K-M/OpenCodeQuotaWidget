@@ -29,5 +29,6 @@ public final class SettingsStore: @unchecked Sendable {
 
     let data = try encoder.encode(settings)
     try data.write(to: fileURL, options: .atomic)
+    try? FileManager.default.setAttributes([.posixPermissions: 0o644], ofItemAtPath: fileURL.path)
   }
 }

@@ -317,35 +317,47 @@ final class AppModel: ObservableObject {
 
   @discardableResult
   private func syncSettingsToWidgetStore(_ settings: AppSettings) -> Bool {
-    guard let appGroupStore = appGroupSettingsStore() else { return false }
+    for attempt in 1...2 {
+      guard let appGroupStore = appGroupSettingsStore() else {
+        print("[OpenCodeQuota] Settings sync failed: no App Group settings store available")
+        invalidateAppGroupStores()
+        continue
+      }
 
-    do {
-      try appGroupStore.save(settings)
-      return true
-    } catch {
-      print("[OpenCodeQuota] Settings sync to widget store failed: \(error.localizedDescription)")
-      invalidateAppGroupStores()
-      return false
+      do {
+        try appGroupStore.save(settings)
+        print("[OpenCodeQuota] Settings synced to widget store successfully")
+        return true
+      } catch {
+        print("[OpenCodeQuota] Settings sync attempt \(attempt) failed: \(error.localizedDescription)")
+        invalidateAppGroupStores()
+      }
     }
+
+    return false
   }
 
   @discardableResult
   private func syncSnapshotToWidgetStore(_ snapshot: QuotaSnapshot) -> Bool {
-    guard let appGroupStore = appGroupSnapshotStore() else {
-      print("[OpenCodeQuota] Widget sync failed: no App Group store available")
-      return false
+    for attempt in 1...2 {
+      guard let appGroupStore = appGroupSnapshotStore() else {
+        print("[OpenCodeQuota] Widget sync failed: no App Group store available")
+        invalidateAppGroupStores()
+        continue
+      }
+
+      do {
+        try appGroupStore.save(snapshot)
+        print("[OpenCodeQuota] Snapshot synced to widget store successfully")
+        print("[OpenCodeQuota] Debug info:\n\(appGroupStore.debugInfo())")
+        return true
+      } catch {
+        print("[OpenCodeQuota] Widget sync attempt \(attempt) failed: \(error.localizedDescription)")
+        invalidateAppGroupStores()
+      }
     }
 
-    do {
-      try appGroupStore.save(snapshot)
-      print("[OpenCodeQuota] Snapshot synced to widget store successfully")
-      print("[OpenCodeQuota] Debug info:\n\(appGroupStore.debugInfo())")
-      return true
-    } catch {
-      print("[OpenCodeQuota] Widget sync failed: \(error.localizedDescription)")
-      invalidateAppGroupStores()
-      return false
-    }
+    return false
   }
 
   private func appGroupSettingsStore() -> SettingsStore? {

@@ -79,9 +79,13 @@ struct QuotaTimelineProvider: TimelineProvider {
 
   private func loadSettings() -> AppSettings {
     do {
-      let store = SettingsStore(fileURL: try SharedPaths.settingsFileURL())
-      return try store.load()
+      let settingsURL = try SharedPaths.settingsFileURL()
+      let store = SettingsStore(fileURL: settingsURL)
+      let settings = try store.load()
+      print("[OpenCodeQuota Widget] Loaded settings from: \(settingsURL.path)")
+      return settings
     } catch {
+      print("[OpenCodeQuota Widget] Failed to load settings, using defaults: \(error)")
       return .default
     }
   }
