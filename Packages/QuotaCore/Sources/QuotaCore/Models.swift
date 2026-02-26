@@ -165,7 +165,7 @@ public enum WidgetBackgroundStyle: String, CaseIterable, Codable, Sendable {
   public var displayName: String {
     switch self {
     case .system:
-      return "System"
+      return "Default"
     case .graphite:
       return "Graphite"
     case .ocean:
@@ -199,18 +199,37 @@ public enum WidgetRingPalette: String, CaseIterable, Codable, Sendable {
 }
 
 public struct WidgetStyleSettings: Codable, Hashable, Sendable {
-  public var showBackground: Bool
   public var backgroundStyle: WidgetBackgroundStyle
   public var ringPalette: WidgetRingPalette
 
   public init(
-    showBackground: Bool = true,
     backgroundStyle: WidgetBackgroundStyle = .system,
     ringPalette: WidgetRingPalette = .traffic
   ) {
-    self.showBackground = showBackground
     self.backgroundStyle = backgroundStyle
     self.ringPalette = ringPalette
+  }
+
+  private enum CodingKeys: String, CodingKey {
+    case showBackground
+    case backgroundStyle
+    case ringPalette
+  }
+
+  public init(from decoder: Decoder) throws {
+    let container = try decoder.container(keyedBy: CodingKeys.self)
+
+    let decodedStyle = try container.decodeIfPresent(WidgetBackgroundStyle.self, forKey: .backgroundStyle) ?? .system
+    let legacyShowBackground = try container.decodeIfPresent(Bool.self, forKey: .showBackground)
+
+    backgroundStyle = (legacyShowBackground == false) ? .system : decodedStyle
+    ringPalette = try container.decodeIfPresent(WidgetRingPalette.self, forKey: .ringPalette) ?? .traffic
+  }
+
+  public func encode(to encoder: Encoder) throws {
+    var container = encoder.container(keyedBy: CodingKeys.self)
+    try container.encode(backgroundStyle, forKey: .backgroundStyle)
+    try container.encode(ringPalette, forKey: .ringPalette)
   }
 
   public static var `default`: WidgetStyleSettings {

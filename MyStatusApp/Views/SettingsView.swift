@@ -12,6 +12,12 @@ struct SettingsView: View {
 
   private let providers = Array(QuotaProvider.allCases)
   private let refreshIntervalOptions = [15, 30, 45, 60, 90, 120, 180]
+  private let settingsLabelWidth: CGFloat = 180
+  private let settingsContentMaxWidth: CGFloat = 760
+
+  private var availableRefreshIntervalOptions: [Int] {
+    Array(Set(refreshIntervalOptions + [model.refreshIntervalMinutes])).sorted()
+  }
 
   var body: some View {
     VStack(spacing: 0) {
@@ -114,6 +120,7 @@ struct SettingsView: View {
         generalSettingsSection
         actionsSection
       }
+      .frame(maxWidth: settingsContentMaxWidth, alignment: .leading)
       .frame(maxWidth: .infinity, alignment: .leading)
       .padding(24)
     }
@@ -173,51 +180,48 @@ struct SettingsView: View {
 
       VStack(spacing: 0) {
         settingsRow(title: "Refresh interval") {
-          Picker("Refresh interval", selection: model.refreshIntervalBinding()) {
-            ForEach(refreshIntervalOptions, id: \.self) { minutes in
+          Picker("", selection: model.refreshIntervalBinding()) {
+            ForEach(availableRefreshIntervalOptions, id: \.self) { minutes in
               Text("\(minutes) min").tag(minutes)
             }
           }
+          .labelsHidden()
           .pickerStyle(.menu)
-          .frame(width: 140)
-        }
-
-        Divider()
-
-        settingsRow(title: "Show widget background") {
-          Toggle("", isOn: model.widgetShowBackgroundBinding())
-            .labelsHidden()
-            .toggleStyle(.switch)
+          .frame(minWidth: 160, maxWidth: 220, alignment: .leading)
         }
 
         Divider()
 
         settingsRow(title: "Background color") {
-          Picker("Background color", selection: model.widgetBackgroundStyleBinding()) {
+          Picker("", selection: model.widgetBackgroundStyleBinding()) {
             ForEach(WidgetBackgroundStyle.allCases, id: \.self) { style in
               Text(style.displayName).tag(style)
             }
           }
+          .labelsHidden()
           .pickerStyle(.menu)
-          .frame(width: 160)
-          .disabled(!model.widgetStyle.showBackground)
+          .frame(minWidth: 160, maxWidth: 220, alignment: .leading)
         }
-        .opacity(model.widgetStyle.showBackground ? 1 : 0.45)
 
         Divider()
 
         settingsRow(title: "Circle graph colors") {
-          Picker("Circle graph colors", selection: model.widgetRingPaletteBinding()) {
+          Picker("", selection: model.widgetRingPaletteBinding()) {
             ForEach(WidgetRingPalette.allCases, id: \.self) { palette in
               Text(palette.displayName).tag(palette)
             }
           }
+          .labelsHidden()
           .pickerStyle(.menu)
-          .frame(width: 160)
+          .frame(minWidth: 160, maxWidth: 220, alignment: .leading)
         }
       }
 
       Text("These settings apply to all widgets unless a provider tab enables style overrides.")
+        .font(.caption)
+        .foregroundStyle(.secondary)
+
+      Text("Choose Default to use only the system widget container. macOS always keeps the rounded widget shape.")
         .font(.caption)
         .foregroundStyle(.secondary)
     }
@@ -369,39 +373,32 @@ struct SettingsView: View {
         if providerStyle.useCustomStyle {
           Divider()
 
-          settingsRow(title: "Show background") {
-            Toggle("", isOn: model.providerShowBackgroundBinding(for: provider))
-              .labelsHidden()
-              .toggleStyle(.switch)
-          }
-
-          Divider()
-
           settingsRow(title: "Background color") {
-            Picker("Background color", selection: model.providerBackgroundStyleBinding(for: provider)) {
+            Picker("", selection: model.providerBackgroundStyleBinding(for: provider)) {
               ForEach(WidgetBackgroundStyle.allCases, id: \.self) { backgroundStyle in
                 Text(backgroundStyle.displayName).tag(backgroundStyle)
               }
             }
+            .labelsHidden()
             .pickerStyle(.menu)
-            .frame(width: 160)
-            .disabled(!providerStyle.style.showBackground)
+            .frame(minWidth: 160, maxWidth: 220, alignment: .leading)
           }
-          .opacity(providerStyle.style.showBackground ? 1 : 0.45)
 
           Divider()
 
           settingsRow(title: "Circle graph colors") {
-            Picker("Circle graph colors", selection: model.providerRingPaletteBinding(for: provider)) {
+            Picker("", selection: model.providerRingPaletteBinding(for: provider)) {
               ForEach(WidgetRingPalette.allCases, id: \.self) { palette in
                 Text(palette.displayName).tag(palette)
               }
             }
+            .labelsHidden()
             .pickerStyle(.menu)
-            .frame(width: 160)
+            .frame(minWidth: 160, maxWidth: 220, alignment: .leading)
           }
         }
       }
+      .frame(maxWidth: settingsContentMaxWidth, alignment: .leading)
       .frame(maxWidth: .infinity, alignment: .leading)
       .padding(24)
     }
@@ -412,9 +409,9 @@ struct SettingsView: View {
     message: String,
     isPositive: Bool
   ) -> some View {
-    HStack {
+    HStack(spacing: 16) {
       Text(title)
-      Spacer(minLength: 24)
+        .frame(width: settingsLabelWidth, alignment: .leading)
 
       HStack(spacing: 8) {
         Circle()
@@ -423,6 +420,7 @@ struct SettingsView: View {
         Text(message)
           .font(.subheadline)
       }
+      .frame(maxWidth: .infinity, alignment: .leading)
     }
     .padding(.vertical, 8)
   }
@@ -431,10 +429,11 @@ struct SettingsView: View {
     title: String,
     @ViewBuilder content: () -> Content
   ) -> some View {
-    HStack(alignment: .center) {
+    HStack(alignment: .center, spacing: 16) {
       Text(title)
-      Spacer(minLength: 24)
+        .frame(width: settingsLabelWidth, alignment: .leading)
       content()
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
     .padding(.vertical, 8)
   }

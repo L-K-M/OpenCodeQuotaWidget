@@ -434,11 +434,7 @@ private func percentText(for metric: UsageMetric?) -> String {
 @ViewBuilder
 private func widgetBackground(for entry: QuotaEntry, provider: QuotaProvider?) -> some View {
   let style = entry.style(for: provider)
-  if style.showBackground {
-    style.backgroundStyle.color.opacity(0.30)
-  } else {
-    Color.clear
-  }
+  style.backgroundStyle.fill
 }
 
 private func ringColor(for metric: UsageMetric, palette: WidgetRingPalette) -> Color {
@@ -497,18 +493,47 @@ private extension QuotaEntry {
 }
 
 private extension WidgetBackgroundStyle {
-  var color: Color {
+  @ViewBuilder
+  var fill: some View {
     switch self {
     case .system:
-      return Color.black.opacity(0.08)
+      Color.clear
     case .graphite:
-      return Color(red: 0.20, green: 0.22, blue: 0.28)
+      LinearGradient(
+        colors: [
+          Color(red: 0.29, green: 0.32, blue: 0.40),
+          Color(red: 0.14, green: 0.16, blue: 0.23)
+        ],
+        startPoint: .topLeading,
+        endPoint: .bottomTrailing
+      )
     case .ocean:
-      return Color(red: 0.16, green: 0.28, blue: 0.44)
+      LinearGradient(
+        colors: [
+          Color(red: 0.22, green: 0.47, blue: 0.74),
+          Color(red: 0.10, green: 0.24, blue: 0.40)
+        ],
+        startPoint: .topLeading,
+        endPoint: .bottomTrailing
+      )
     case .forest:
-      return Color(red: 0.16, green: 0.32, blue: 0.24)
+      LinearGradient(
+        colors: [
+          Color(red: 0.20, green: 0.47, blue: 0.34),
+          Color(red: 0.10, green: 0.25, blue: 0.18)
+        ],
+        startPoint: .topLeading,
+        endPoint: .bottomTrailing
+      )
     case .sunset:
-      return Color(red: 0.47, green: 0.24, blue: 0.22)
+      LinearGradient(
+        colors: [
+          Color(red: 0.74, green: 0.40, blue: 0.25),
+          Color(red: 0.38, green: 0.20, blue: 0.17)
+        ],
+        startPoint: .topLeading,
+        endPoint: .bottomTrailing
+      )
     }
   }
 }

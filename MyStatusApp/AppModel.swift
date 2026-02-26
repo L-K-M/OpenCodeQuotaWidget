@@ -200,16 +200,6 @@ final class AppModel: ObservableObject {
     )
   }
 
-  func widgetShowBackgroundBinding() -> Binding<Bool> {
-    Binding(
-      get: { self.widgetStyle.showBackground },
-      set: { newValue in
-        self.widgetStyle.showBackground = newValue
-        self.saveConfiguration()
-      }
-    )
-  }
-
   func widgetBackgroundStyleBinding() -> Binding<WidgetBackgroundStyle> {
     Binding(
       get: { self.widgetStyle.backgroundStyle },
@@ -249,17 +239,6 @@ final class AppModel: ObservableObject {
           if newValue {
             style.style = self.widgetStyle
           }
-        }
-      }
-    )
-  }
-
-  func providerShowBackgroundBinding(for provider: QuotaProvider) -> Binding<Bool> {
-    Binding(
-      get: { self.providerStyle(for: provider).style.showBackground },
-      set: { newValue in
-        self.updateProviderStyle(for: provider) { style in
-          style.style.showBackground = newValue
         }
       }
     )
