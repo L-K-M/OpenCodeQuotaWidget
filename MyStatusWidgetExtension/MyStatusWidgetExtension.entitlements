@@ -6,7 +6,7 @@
 	<true/>
 	<key>com.apple.security.application-groups</key>
 	<array>
-		<string>group.ch.lkmc.opencodequota</string>
+		<string>$(TeamIdentifierPrefix)group.ch.lkmc.opencodequota</string>
 	</array>
 </dict>
 </plist>

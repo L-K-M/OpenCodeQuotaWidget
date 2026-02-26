@@ -35,7 +35,7 @@ Or run:
 ```
 
 3. Open `OpenCodeQuota.xcodeproj` in Xcode.
-4. Verify signing team in target settings (project defaults currently use team `293A48LC7B`; change if needed).
-5. App Group identifier is `group.ch.lkmc.opencodequota` (must match in both entitlements files and `Shared/SharedConstants.swift`).
+4. Select your Apple Developer signing team in both targets before running.
+5. App Group identifier uses your signing team prefix: `$(TeamIdentifierPrefix)group.ch.lkmc.opencodequota` (must match both entitlements files and runtime resolution in `Shared/SharedConstants.swift`).
 6. Run the `OpenCodeQuotaApp` target once, confirm OpenCode credentials are detected, then add the widget.
 7. If config files show sandbox permission errors, click `Grant File Access` and select your OpenCode's auth JSON file once.

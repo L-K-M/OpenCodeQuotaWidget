@@ -3,7 +3,7 @@
 	archiveVersion = 1;
 	classes = {
 	};
-	objectVersion = 77;
+	objectVersion = 63;
 	objects = {
 
 /* Begin PBXBuildFile section */
@@ -60,7 +60,7 @@
 		B464E10242B7A668A82271FB /* AppModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppModel.swift; sourceTree = "<group>"; };
 		B8790595F5937C018326838F /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
 		C56B683D1E931C7A72F30B8A /* QuotaCore */ = {isa = PBXFileReference; lastKnownFileType = folder; name = QuotaCore; path = Packages/QuotaCore; sourceTree = SOURCE_ROOT; };
-		F49AF792487614A4DDDFA7F3 /* OpenCodeQuotaApp.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = OpenCodeQuotaApp.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		F49AF792487614A4DDDFA7F3 /* OpenCodeQuota.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = OpenCodeQuota.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -126,7 +126,7 @@
 		6A29E79FE2BD6DFAE0C20194 /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				F49AF792487614A4DDDFA7F3 /* OpenCodeQuotaApp.app */,
+				F49AF792487614A4DDDFA7F3 /* OpenCodeQuota.app */,
 				41F99209A4357B22E74BDB54 /* OpenCodeQuotaWidgetExtension.appex */,
 			);
 			name = Products;
@@ -180,7 +180,7 @@
 				B526DA0D674BC4A2E5597F28 /* QuotaCore */,
 			);
 			productName = OpenCodeQuotaApp;
-			productReference = F49AF792487614A4DDDFA7F3 /* OpenCodeQuotaApp.app */;
+			productReference = F49AF792487614A4DDDFA7F3 /* OpenCodeQuota.app */;
 			productType = "com.apple.product-type.application";
 		};
 		77485B5CA342AADC9EA1C259 /* OpenCodeQuotaWidgetExtension */ = {
@@ -212,11 +212,9 @@
 				LastUpgradeCheck = 1430;
 				TargetAttributes = {
 					71B4BBA34BEE34DA7BD7B3D9 = {
-						DevelopmentTeam = 293A48LC7B;
 						ProvisioningStyle = Automatic;
 					};
 					77485B5CA342AADC9EA1C259 = {
-						DevelopmentTeam = 293A48LC7B;
 						ProvisioningStyle = Automatic;
 					};
 				};
@@ -234,7 +232,6 @@
 			packageReferences = (
 				DC1DA5B37CC7087BAEADCBC9 /* XCLocalSwiftPackageReference "Packages/QuotaCore" */,
 			);
-			preferredProjectObjectVersion = 77;
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (

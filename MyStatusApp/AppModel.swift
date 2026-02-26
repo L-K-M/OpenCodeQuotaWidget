@@ -23,10 +23,8 @@ final class AppModel: ObservableObject {
   private let refreshService: RefreshService
   private let credentialLoader: OpenCodeCredentialLoader
   private let sandboxAccess: OpenCodeSandboxAccess
-  private var resolvedAppGroupStores = false
   private var cachedAppGroupSettingsStore: SettingsStore?
   private var cachedAppGroupSnapshotStore: SnapshotStore?
-  private var widgetSyncBlocked = false
 
   init() {
     let baseDirectory = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first
@@ -340,24 +338,20 @@ final class AppModel: ObservableObject {
 
   @discardableResult
   private func syncSettingsToWidgetStore(_ settings: AppSettings) -> Bool {
-    guard !widgetSyncBlocked else { return false }
     guard let appGroupStore = appGroupSettingsStore() else { return false }
 
     do {
       try appGroupStore.save(settings)
       return true
     } catch {
-      widgetSyncBlocked = true
+      print("[OpenCodeQuota] Settings sync to widget store failed: \(error.localizedDescription)")
+      invalidateAppGroupStores()
       return false
     }
   }
 
   @discardableResult
   private func syncSnapshotToWidgetStore(_ snapshot: QuotaSnapshot) -> Bool {
-    guard !widgetSyncBlocked else {
-      print("[OpenCodeQuota] Widget sync blocked (previous failure)")
-      return false
-    }
     guard let appGroupStore = appGroupSnapshotStore() else {
       print("[OpenCodeQuota] Widget sync failed: no App Group store available")
       return false
@@ -370,7 +364,7 @@ final class AppModel: ObservableObject {
       return true
     } catch {
       print("[OpenCodeQuota] Widget sync failed: \(error.localizedDescription)")
-      widgetSyncBlocked = true
+      invalidateAppGroupStores()
       return false
     }
   }
@@ -386,10 +380,9 @@ final class AppModel: ObservableObject {
   }
 
   private func resolveAppGroupStoresIfNeeded() {
-    guard !resolvedAppGroupStores else {
+    guard cachedAppGroupSettingsStore == nil || cachedAppGroupSnapshotStore == nil else {
       return
     }
-    resolvedAppGroupStores = true
 
     do {
       let settingsURL = try SharedPaths.settingsFileURL()
@@ -402,8 +395,13 @@ final class AppModel: ObservableObject {
       print("[OpenCodeQuota] App Group container resolved: \(snapshotURL.deletingLastPathComponent().path)")
     } catch {
       print("[OpenCodeQuota] Failed to resolve App Group container: \(error.localizedDescription)")
-      widgetSyncBlocked = true
+      invalidateAppGroupStores()
     }
+  }
+
+  private func invalidateAppGroupStores() {
+    cachedAppGroupSettingsStore = nil
+    cachedAppGroupSnapshotStore = nil
   }
 
   private func reloadWidgetTimelines() {

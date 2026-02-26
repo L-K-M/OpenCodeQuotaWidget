@@ -29,7 +29,7 @@ targets:
         PRODUCT_NAME: OpenCodeQuota
         SWIFT_VERSION: 5.10
         CODE_SIGN_STYLE: Automatic
-        DEVELOPMENT_TEAM: 293A48LC7B
+        DEVELOPMENT_TEAM: ""
         GENERATE_INFOPLIST_FILE: NO
         CODE_SIGN_ENTITLEMENTS: MyStatusApp/MyStatusApp.entitlements
         MACOSX_DEPLOYMENT_TARGET: 14.0
@@ -39,6 +39,7 @@ targets:
       path: MyStatusApp/Info.plist
       properties:
         CFBundleDevelopmentRegion: $(DEVELOPMENT_LANGUAGE)
+        AppGroupIdentifier: $(TeamIdentifierPrefix)group.ch.lkmc.opencodequota
         CFBundleExecutable: $(EXECUTABLE_NAME)
         CFBundleIdentifier: $(PRODUCT_BUNDLE_IDENTIFIER)
         CFBundleInfoDictionaryVersion: "6.0"
@@ -65,7 +66,7 @@ targets:
         PRODUCT_NAME: OpenCodeQuotaWidgetExtension
         SWIFT_VERSION: 5.10
         CODE_SIGN_STYLE: Automatic
-        DEVELOPMENT_TEAM: 293A48LC7B
+        DEVELOPMENT_TEAM: ""
         GENERATE_INFOPLIST_FILE: NO
         CODE_SIGN_ENTITLEMENTS: MyStatusWidgetExtension/MyStatusWidgetExtension.entitlements
         APPLICATION_EXTENSION_API_ONLY: YES
@@ -77,6 +78,7 @@ targets:
       path: MyStatusWidgetExtension/Info.plist
       properties:
         CFBundleDevelopmentRegion: $(DEVELOPMENT_LANGUAGE)
+        AppGroupIdentifier: $(TeamIdentifierPrefix)group.ch.lkmc.opencodequota
         CFBundleExecutable: $(EXECUTABLE_NAME)
         CFBundleIdentifier: $(PRODUCT_BUNDLE_IDENTIFIER)
         CFBundleInfoDictionaryVersion: "6.0"
