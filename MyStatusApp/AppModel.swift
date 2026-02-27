@@ -200,21 +200,31 @@ final class AppModel: ObservableObject {
     )
   }
 
-  func widgetBackgroundStyleBinding() -> Binding<WidgetBackgroundStyle> {
+  func widgetBackgroundColorBinding() -> Binding<Color> {
     Binding(
-      get: { self.widgetStyle.backgroundStyle },
+      get: { Self.color(fromHex: self.widgetStyle.backgroundHexColor) },
       set: { newValue in
-        self.widgetStyle.backgroundStyle = newValue
+        self.widgetStyle.backgroundHexColor = Self.hexColor(from: newValue, allowTransparency: true)
         self.saveConfiguration()
       }
     )
   }
 
-  func widgetRingPaletteBinding() -> Binding<WidgetRingPalette> {
+  func widgetRingColorBinding(
+    for role: WidgetRingColorRole,
+    layer: WidgetRingLayer
+  ) -> Binding<Color> {
     Binding(
-      get: { self.widgetStyle.ringPalette },
+      get: {
+        let hex = self.widgetStyle.ringColors.hexColor(for: role, layer: layer)
+        return Self.color(fromHex: hex)
+      },
       set: { newValue in
-        self.widgetStyle.ringPalette = newValue
+        guard let hex = Self.hexColor(from: newValue, allowTransparency: false) else {
+          return
+        }
+
+        self.widgetStyle.ringColors.setHexColor(hex, for: role, layer: layer)
         self.saveConfiguration()
       }
     )
@@ -227,7 +237,15 @@ final class AppModel: ObservableObject {
 
   func effectiveStyle(for provider: QuotaProvider) -> WidgetStyleSettings {
     let providerStyle = providerStyle(for: provider)
-    return providerStyle.useCustomStyle ? providerStyle.style : widgetStyle
+
+    guard providerStyle.useCustomStyle else {
+      return widgetStyle
+    }
+
+    return WidgetStyleSettings(
+      backgroundHexColor: providerStyle.style.backgroundHexColor ?? widgetStyle.backgroundHexColor,
+      ringColors: providerStyle.style.ringColors
+    )
   }
 
   func providerOverrideEnabledBinding(for provider: QuotaProvider) -> Binding<Bool> {
@@ -244,23 +262,38 @@ final class AppModel: ObservableObject {
     )
   }
 
-  func providerBackgroundStyleBinding(for provider: QuotaProvider) -> Binding<WidgetBackgroundStyle> {
+  func providerBackgroundColorBinding(for provider: QuotaProvider) -> Binding<Color> {
     Binding(
-      get: { self.providerStyle(for: provider).style.backgroundStyle },
+      get: {
+        let providerStyle = self.providerStyle(for: provider).style
+        let resolvedHex = providerStyle.backgroundHexColor ?? self.widgetStyle.backgroundHexColor
+        return Self.color(fromHex: resolvedHex)
+      },
       set: { newValue in
         self.updateProviderStyle(for: provider) { style in
-          style.style.backgroundStyle = newValue
+          style.style.backgroundHexColor = Self.hexColor(from: newValue, allowTransparency: true)
         }
       }
     )
   }
 
-  func providerRingPaletteBinding(for provider: QuotaProvider) -> Binding<WidgetRingPalette> {
+  func providerRingColorBinding(
+    for provider: QuotaProvider,
+    role: WidgetRingColorRole,
+    layer: WidgetRingLayer
+  ) -> Binding<Color> {
     Binding(
-      get: { self.providerStyle(for: provider).style.ringPalette },
+      get: {
+        let hex = self.providerStyle(for: provider).style.ringColors.hexColor(for: role, layer: layer)
+        return Self.color(fromHex: hex)
+      },
       set: { newValue in
+        guard let hex = Self.hexColor(from: newValue, allowTransparency: false) else {
+          return
+        }
+
         self.updateProviderStyle(for: provider) { style in
-          style.style.ringPalette = newValue
+          style.style.ringColors.setHexColor(hex, for: role, layer: layer)
         }
       }
     )
@@ -313,6 +346,99 @@ final class AppModel: ObservableObject {
         providerStyle(for: provider)
       }
     )
+  }
+
+  private static func color(fromHex hex: String?) -> Color {
+    guard let components = parseHexColor(hex) else {
+      return .clear
+    }
+
+    return Color(
+      red: components.red,
+      green: components.green,
+      blue: components.blue,
+      opacity: components.alpha
+    )
+  }
+
+  private static func hexColor(from color: Color, allowTransparency: Bool) -> String? {
+    guard let components = rgbaComponents(from: color) else {
+      return nil
+    }
+
+    if allowTransparency && components.alpha <= 0.01 {
+      return nil
+    }
+
+    let red = clampColorByte(components.red)
+    let green = clampColorByte(components.green)
+    let blue = clampColorByte(components.blue)
+
+    if allowTransparency {
+      let alpha = clampColorByte(components.alpha)
+      return String(format: "#%02X%02X%02X%02X", red, green, blue, alpha)
+    }
+
+    return String(format: "#%02X%02X%02X", red, green, blue)
+  }
+
+  private static func rgbaComponents(from color: Color) -> (
+    red: Double,
+    green: Double,
+    blue: Double,
+    alpha: Double
+  )? {
+    let nsColor = NSColor(color)
+    guard let converted = nsColor.usingColorSpace(.extendedSRGB) ?? nsColor.usingColorSpace(.sRGB) else {
+      return nil
+    }
+
+    return (
+      red: Double(converted.redComponent),
+      green: Double(converted.greenComponent),
+      blue: Double(converted.blueComponent),
+      alpha: Double(converted.alphaComponent)
+    )
+  }
+
+  private static func parseHexColor(_ value: String?) -> (
+    red: Double,
+    green: Double,
+    blue: Double,
+    alpha: Double
+  )? {
+    guard var raw = value?.trimmingCharacters(in: .whitespacesAndNewlines), !raw.isEmpty else {
+      return nil
+    }
+
+    if raw.hasPrefix("#") {
+      raw.removeFirst()
+    }
+
+    if raw.count == 3 || raw.count == 4 {
+      raw = raw.map { "\($0)\($0)" }.joined()
+    }
+
+    guard raw.count == 6 || raw.count == 8, let parsed = UInt64(raw, radix: 16) else {
+      return nil
+    }
+
+    if raw.count == 6 {
+      let red = Double((parsed >> 16) & 0xFF) / 255.0
+      let green = Double((parsed >> 8) & 0xFF) / 255.0
+      let blue = Double(parsed & 0xFF) / 255.0
+      return (red: red, green: green, blue: blue, alpha: 1)
+    }
+
+    let red = Double((parsed >> 24) & 0xFF) / 255.0
+    let green = Double((parsed >> 16) & 0xFF) / 255.0
+    let blue = Double((parsed >> 8) & 0xFF) / 255.0
+    let alpha = Double(parsed & 0xFF) / 255.0
+    return (red: red, green: green, blue: blue, alpha: alpha)
+  }
+
+  private static func clampColorByte(_ value: Double) -> Int {
+    Int((max(0, min(1, value)) * 255.0).rounded())
   }
 
   @discardableResult

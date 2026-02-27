@@ -193,27 +193,63 @@ struct SettingsView: View {
         Divider()
 
         settingsRow(title: "Background color") {
-          Picker("", selection: model.widgetBackgroundStyleBinding()) {
-            ForEach(WidgetBackgroundStyle.allCases, id: \.self) { style in
-              Text(style.displayName).tag(style)
-            }
+          HStack(spacing: 10) {
+            ColorPicker("", selection: model.widgetBackgroundColorBinding(), supportsOpacity: true)
+              .labelsHidden()
+              .frame(width: 48)
+
+            Text("Transparent uses system background")
+              .font(.caption)
+              .foregroundStyle(.secondary)
           }
-          .labelsHidden()
-          .pickerStyle(.menu)
-          .frame(minWidth: 160, maxWidth: 220, alignment: .leading)
         }
 
         Divider()
 
         settingsRow(title: "Circle graph colors") {
-          Picker("", selection: model.widgetRingPaletteBinding()) {
-            ForEach(WidgetRingPalette.allCases, id: \.self) { palette in
-              Text(palette.displayName).tag(palette)
-            }
+          VStack(alignment: .leading, spacing: 10) {
+            Text(WidgetRingLayer.outer.displayName)
+              .font(.caption.weight(.semibold))
+
+            ringColorPickerRow(
+              title: WidgetRingColorRole.high.displayName,
+              binding: model.widgetRingColorBinding(for: .high, layer: .outer)
+            )
+            ringColorPickerRow(
+              title: WidgetRingColorRole.medium.displayName,
+              binding: model.widgetRingColorBinding(for: .medium, layer: .outer)
+            )
+            ringColorPickerRow(
+              title: WidgetRingColorRole.low.displayName,
+              binding: model.widgetRingColorBinding(for: .low, layer: .outer)
+            )
+            ringColorPickerRow(
+              title: WidgetRingColorRole.unlimited.displayName,
+              binding: model.widgetRingColorBinding(for: .unlimited, layer: .outer)
+            )
+
+            Divider().padding(.vertical, 2)
+
+            Text(WidgetRingLayer.inner.displayName)
+              .font(.caption.weight(.semibold))
+
+            ringColorPickerRow(
+              title: WidgetRingColorRole.high.displayName,
+              binding: model.widgetRingColorBinding(for: .high, layer: .inner)
+            )
+            ringColorPickerRow(
+              title: WidgetRingColorRole.medium.displayName,
+              binding: model.widgetRingColorBinding(for: .medium, layer: .inner)
+            )
+            ringColorPickerRow(
+              title: WidgetRingColorRole.low.displayName,
+              binding: model.widgetRingColorBinding(for: .low, layer: .inner)
+            )
+            ringColorPickerRow(
+              title: WidgetRingColorRole.unlimited.displayName,
+              binding: model.widgetRingColorBinding(for: .unlimited, layer: .inner)
+            )
           }
-          .labelsHidden()
-          .pickerStyle(.menu)
-          .frame(minWidth: 160, maxWidth: 220, alignment: .leading)
         }
       }
 
@@ -221,7 +257,7 @@ struct SettingsView: View {
         .font(.caption)
         .foregroundStyle(.secondary)
 
-      Text("Choose Default to use only the system widget container. macOS always keeps the rounded widget shape.")
+      Text("macOS always keeps the rounded widget shape.")
         .font(.caption)
         .foregroundStyle(.secondary)
     }
@@ -374,27 +410,63 @@ struct SettingsView: View {
           Divider()
 
           settingsRow(title: "Background color") {
-            Picker("", selection: model.providerBackgroundStyleBinding(for: provider)) {
-              ForEach(WidgetBackgroundStyle.allCases, id: \.self) { backgroundStyle in
-                Text(backgroundStyle.displayName).tag(backgroundStyle)
-              }
+            HStack(spacing: 10) {
+              ColorPicker("", selection: model.providerBackgroundColorBinding(for: provider), supportsOpacity: true)
+                .labelsHidden()
+                .frame(width: 48)
+
+              Text("Transparent inherits global background")
+                .font(.caption)
+                .foregroundStyle(.secondary)
             }
-            .labelsHidden()
-            .pickerStyle(.menu)
-            .frame(minWidth: 160, maxWidth: 220, alignment: .leading)
           }
 
           Divider()
 
           settingsRow(title: "Circle graph colors") {
-            Picker("", selection: model.providerRingPaletteBinding(for: provider)) {
-              ForEach(WidgetRingPalette.allCases, id: \.self) { palette in
-                Text(palette.displayName).tag(palette)
-              }
+            VStack(alignment: .leading, spacing: 10) {
+              Text(WidgetRingLayer.outer.displayName)
+                .font(.caption.weight(.semibold))
+
+              ringColorPickerRow(
+                title: WidgetRingColorRole.high.displayName,
+                binding: model.providerRingColorBinding(for: provider, role: .high, layer: .outer)
+              )
+              ringColorPickerRow(
+                title: WidgetRingColorRole.medium.displayName,
+                binding: model.providerRingColorBinding(for: provider, role: .medium, layer: .outer)
+              )
+              ringColorPickerRow(
+                title: WidgetRingColorRole.low.displayName,
+                binding: model.providerRingColorBinding(for: provider, role: .low, layer: .outer)
+              )
+              ringColorPickerRow(
+                title: WidgetRingColorRole.unlimited.displayName,
+                binding: model.providerRingColorBinding(for: provider, role: .unlimited, layer: .outer)
+              )
+
+              Divider().padding(.vertical, 2)
+
+              Text(WidgetRingLayer.inner.displayName)
+                .font(.caption.weight(.semibold))
+
+              ringColorPickerRow(
+                title: WidgetRingColorRole.high.displayName,
+                binding: model.providerRingColorBinding(for: provider, role: .high, layer: .inner)
+              )
+              ringColorPickerRow(
+                title: WidgetRingColorRole.medium.displayName,
+                binding: model.providerRingColorBinding(for: provider, role: .medium, layer: .inner)
+              )
+              ringColorPickerRow(
+                title: WidgetRingColorRole.low.displayName,
+                binding: model.providerRingColorBinding(for: provider, role: .low, layer: .inner)
+              )
+              ringColorPickerRow(
+                title: WidgetRingColorRole.unlimited.displayName,
+                binding: model.providerRingColorBinding(for: provider, role: .unlimited, layer: .inner)
+              )
             }
-            .labelsHidden()
-            .pickerStyle(.menu)
-            .frame(minWidth: 160, maxWidth: 220, alignment: .leading)
           }
         }
       }
@@ -429,13 +501,26 @@ struct SettingsView: View {
     title: String,
     @ViewBuilder content: () -> Content
   ) -> some View {
-    HStack(alignment: .center, spacing: 16) {
+    HStack(alignment: .top, spacing: 16) {
       Text(title)
         .frame(width: settingsLabelWidth, alignment: .leading)
       content()
         .frame(maxWidth: .infinity, alignment: .leading)
     }
     .padding(.vertical, 8)
+  }
+
+  private func ringColorPickerRow(title: String, binding: Binding<Color>) -> some View {
+    HStack(spacing: 10) {
+      Text(title)
+        .font(.caption)
+        .foregroundStyle(.secondary)
+        .frame(width: 130, alignment: .leading)
+
+      ColorPicker("", selection: binding, supportsOpacity: false)
+        .labelsHidden()
+        .frame(width: 48)
+    }
   }
 
   private func summaryPill(title: String, value: String, tint: Color) -> some View {

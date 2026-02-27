@@ -120,7 +120,7 @@ private struct OverviewSmallQuotaView: View {
           .font(.caption.weight(.semibold))
           .lineLimit(1)
 
-        ConcentricQuotaChart(metrics: chartMetrics(for: usage), ringPalette: style.ringPalette)
+        ConcentricQuotaChart(metrics: chartMetrics(for: usage), ringColors: style.ringColors)
           .frame(maxWidth: .infinity, minHeight: 88, maxHeight: .infinity)
 
         Text(metricSummary(for: usage))
@@ -169,7 +169,7 @@ private struct ProviderSmallQuotaView: View {
 
         ConcentricQuotaChart(
           metrics: metrics,
-          ringPalette: entry.style(for: provider).ringPalette,
+          ringColors: entry.style(for: provider).ringColors,
           centerLabelStyle: .hidden
         )
           .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -236,7 +236,7 @@ private struct MediumCompactQuotaView: View {
 
       if let snapshot = entry.snapshot, !snapshot.providers.isEmpty {
         ForEach(sortedProviders(snapshot.providers).prefix(6)) { usage in
-          CompactProviderUsageRow(usage: usage, ringPalette: entry.style(for: usage.provider).ringPalette)
+          CompactProviderUsageRow(usage: usage, ringColors: entry.style(for: usage.provider).ringColors)
         }
 
         if !snapshot.failures.isEmpty {
@@ -266,7 +266,7 @@ private struct MediumCompactQuotaView: View {
 
 private struct CompactProviderUsageRow: View {
   let usage: ProviderUsage
-  let ringPalette: WidgetRingPalette
+  let ringColors: WidgetRingColors
 
   var body: some View {
     HStack(spacing: 6) {
@@ -278,7 +278,7 @@ private struct CompactProviderUsageRow: View {
       MiniProgressBar(
         percent: metric?.remainingPercent,
         unlimited: metric?.isUnlimited ?? false,
-        ringPalette: ringPalette
+        ringColors: ringColors
       )
         .frame(height: 5)
 
@@ -305,7 +305,7 @@ private struct ConcentricQuotaChart: View {
   }
 
   let metrics: [UsageMetric]
-  let ringPalette: WidgetRingPalette
+  let ringColors: WidgetRingColors
   var centerLabelStyle: CenterLabelStyle = .metrics
 
   var body: some View {
@@ -319,7 +319,8 @@ private struct ConcentricQuotaChart: View {
           CircularQuotaRing(
             metric: outerMetric,
             lineWidth: max(8, side * 0.12),
-            ringPalette: ringPalette
+            ringColors: ringColors,
+            ringLayer: .outer
           )
             .frame(width: side, height: side)
         }
@@ -328,7 +329,8 @@ private struct ConcentricQuotaChart: View {
           CircularQuotaRing(
             metric: innerMetric,
             lineWidth: max(6, side * 0.1),
-            ringPalette: ringPalette
+            ringColors: ringColors,
+            ringLayer: .inner
           )
             .frame(width: side * 0.64, height: side * 0.64)
         }
@@ -362,7 +364,8 @@ private struct ConcentricQuotaChart: View {
 private struct CircularQuotaRing: View {
   let metric: UsageMetric
   let lineWidth: CGFloat
-  let ringPalette: WidgetRingPalette
+  let ringColors: WidgetRingColors
+  let ringLayer: WidgetRingLayer
 
   var body: some View {
     ZStack {
@@ -372,7 +375,7 @@ private struct CircularQuotaRing: View {
       Circle()
         .trim(from: 0, to: progress)
         .stroke(
-          ringColor(for: metric, palette: ringPalette),
+          ringColor(for: metric, colors: ringColors, layer: ringLayer),
           style: StrokeStyle(lineWidth: lineWidth, lineCap: .round)
         )
         .rotationEffect(.degrees(-90))
@@ -391,7 +394,7 @@ private struct CircularQuotaRing: View {
 private struct MiniProgressBar: View {
   let percent: Int?
   let unlimited: Bool
-  let ringPalette: WidgetRingPalette
+  let ringColors: WidgetRingColors
 
   var body: some View {
     GeometryReader { proxy in
@@ -401,7 +404,7 @@ private struct MiniProgressBar: View {
           .fill(Color.white.opacity(0.16))
 
         if unlimited {
-          Capsule().fill(unlimitedColor(for: ringPalette))
+          Capsule().fill(unlimitedColor(for: ringColors, layer: .outer))
         } else {
           Capsule()
             .fill(progressColor)
@@ -412,7 +415,7 @@ private struct MiniProgressBar: View {
   }
 
   private var progressColor: Color {
-    ringColor(for: percent ?? 0, palette: ringPalette)
+    ringColor(for: percent ?? 0, colors: ringColors, layer: .outer)
   }
 }
 
@@ -514,51 +517,31 @@ private func percentText(for metric: UsageMetric?) -> String {
 @ViewBuilder
 private func widgetBackground(for entry: QuotaEntry, provider: QuotaProvider?) -> some View {
   let style = entry.style(for: provider)
-  style.backgroundStyle.fill
+  if let color = Color(hexColor: style.backgroundHexColor) {
+    color
+  } else {
+    Color.clear
+  }
 }
 
-private func ringColor(for metric: UsageMetric, palette: WidgetRingPalette) -> Color {
+private func ringColor(for metric: UsageMetric, colors: WidgetRingColors, layer: WidgetRingLayer) -> Color {
   if metric.isUnlimited {
-    return unlimitedColor(for: palette)
+    return unlimitedColor(for: colors, layer: layer)
   }
 
-  return ringColor(for: metric.remainingPercent ?? 0, palette: palette)
+  return ringColor(for: metric.remainingPercent ?? 0, colors: colors, layer: layer)
 }
 
-private func ringColor(for remainingPercent: Int, palette: WidgetRingPalette) -> Color {
+private func ringColor(for remainingPercent: Int, colors: WidgetRingColors, layer: WidgetRingLayer) -> Color {
   let value = max(0, min(100, remainingPercent))
 
-  switch palette {
-  case .traffic:
-    if value >= 70 { return .green }
-    if value >= 40 { return .yellow }
-    return .red
-  case .cool:
-    if value >= 70 { return Color(red: 0.16, green: 0.84, blue: 0.95) }
-    if value >= 40 { return Color(red: 0.20, green: 0.58, blue: 0.98) }
-    return Color(red: 0.30, green: 0.42, blue: 0.98)
-  case .warm:
-    if value >= 70 { return Color(red: 0.96, green: 0.66, blue: 0.28) }
-    if value >= 40 { return Color(red: 0.96, green: 0.49, blue: 0.21) }
-    return Color(red: 0.95, green: 0.31, blue: 0.24)
-  case .monochrome:
-    if value >= 70 { return Color.white.opacity(0.95) }
-    if value >= 40 { return Color.white.opacity(0.75) }
-    return Color.white.opacity(0.55)
-  }
+  if value >= 70 { return Color(hexColor: colors.hexColor(for: .high, layer: layer)) ?? .green }
+  if value >= 40 { return Color(hexColor: colors.hexColor(for: .medium, layer: layer)) ?? .yellow }
+  return Color(hexColor: colors.hexColor(for: .low, layer: layer)) ?? .red
 }
 
-private func unlimitedColor(for palette: WidgetRingPalette) -> Color {
-  switch palette {
-  case .traffic:
-    return .blue
-  case .cool:
-    return Color(red: 0.47, green: 0.80, blue: 0.99)
-  case .warm:
-    return Color(red: 0.98, green: 0.77, blue: 0.36)
-  case .monochrome:
-    return Color.white.opacity(0.90)
-  }
+private func unlimitedColor(for colors: WidgetRingColors, layer: WidgetRingLayer) -> Color {
+  Color(hexColor: colors.hexColor(for: .unlimited, layer: layer)) ?? .blue
 }
 
 private extension QuotaEntry {
@@ -575,59 +558,45 @@ private extension QuotaEntry {
       return globalStyle
     }
 
-    let resolvedBackground = override.style.backgroundStyle == .system
-      ? globalStyle.backgroundStyle
-      : override.style.backgroundStyle
+    let resolvedBackground = override.style.backgroundHexColor ?? globalStyle.backgroundHexColor
 
     return WidgetStyleSettings(
-      backgroundStyle: resolvedBackground,
-      ringPalette: override.style.ringPalette
+      backgroundHexColor: resolvedBackground,
+      ringColors: override.style.ringColors
     )
   }
 }
 
-private extension WidgetBackgroundStyle {
-  @ViewBuilder
-  var fill: some View {
-    switch self {
-    case .system:
-      Color.clear
-    case .graphite:
-      LinearGradient(
-        colors: [
-          Color(red: 0.28, green: 0.32, blue: 0.44),
-          Color(red: 0.14, green: 0.17, blue: 0.26)
-        ],
-        startPoint: .topLeading,
-        endPoint: .bottomTrailing
-      )
-    case .ocean:
-      LinearGradient(
-        colors: [
-          Color(red: 0.12, green: 0.62, blue: 0.98),
-          Color(red: 0.03, green: 0.29, blue: 0.78)
-        ],
-        startPoint: .topLeading,
-        endPoint: .bottomTrailing
-      )
-    case .forest:
-      LinearGradient(
-        colors: [
-          Color(red: 0.12, green: 0.74, blue: 0.38),
-          Color(red: 0.03, green: 0.45, blue: 0.22)
-        ],
-        startPoint: .topLeading,
-        endPoint: .bottomTrailing
-      )
-    case .sunset:
-      LinearGradient(
-        colors: [
-          Color(red: 0.98, green: 0.47, blue: 0.20),
-          Color(red: 0.84, green: 0.24, blue: 0.15)
-        ],
-        startPoint: .topLeading,
-        endPoint: .bottomTrailing
-      )
+private extension Color {
+  init?(hexColor: String?) {
+    guard var raw = hexColor?.trimmingCharacters(in: .whitespacesAndNewlines), !raw.isEmpty else {
+      return nil
     }
+
+    if raw.hasPrefix("#") {
+      raw.removeFirst()
+    }
+
+    if raw.count == 3 || raw.count == 4 {
+      raw = raw.map { "\($0)\($0)" }.joined()
+    }
+
+    guard (raw.count == 6 || raw.count == 8), let parsed = UInt64(raw, radix: 16) else {
+      return nil
+    }
+
+    if raw.count == 6 {
+      let red = Double((parsed >> 16) & 0xFF) / 255.0
+      let green = Double((parsed >> 8) & 0xFF) / 255.0
+      let blue = Double(parsed & 0xFF) / 255.0
+      self = Color(red: red, green: green, blue: blue)
+      return
+    }
+
+    let red = Double((parsed >> 24) & 0xFF) / 255.0
+    let green = Double((parsed >> 16) & 0xFF) / 255.0
+    let blue = Double((parsed >> 8) & 0xFF) / 255.0
+    let alpha = Double(parsed & 0xFF) / 255.0
+    self = Color(red: red, green: green, blue: blue, opacity: alpha)
   }
 }
