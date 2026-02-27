@@ -163,34 +163,54 @@ private struct ProviderSmallQuotaView: View {
   let provider: QuotaProvider
 
   var body: some View {
-    VStack(alignment: .leading, spacing: 6) {
-      Text(provider.displayName)
-        .font(.caption.weight(.semibold))
-        .lineLimit(1)
-
+    ZStack {
       if let usage = providerUsage {
-        ConcentricQuotaChart(
-          metrics: chartMetrics(for: usage),
-          ringPalette: entry.style(for: provider).ringPalette
-        )
-          .frame(maxWidth: .infinity, minHeight: 96, maxHeight: .infinity)
+        let metrics = chartMetrics(for: usage)
 
-        Text(metricSummary(for: usage))
-          .font(.caption2)
-          .foregroundStyle(.secondary)
-          .lineLimit(1)
+        ConcentricQuotaChart(
+          metrics: metrics,
+          ringPalette: entry.style(for: provider).ringPalette,
+          centerLabelStyle: .hidden
+        )
+          .frame(maxWidth: .infinity, maxHeight: .infinity)
+
+        VStack(spacing: 2) {
+          Text(compactProviderName(for: provider))
+            .font(.caption2.weight(.semibold))
+            .lineLimit(1)
+            .minimumScaleFactor(0.75)
+
+          Text(centerPercentSummary(for: metrics))
+            .font(.caption.weight(.semibold))
+            .monospacedDigit()
+            .lineLimit(1)
+
+          if let resetText = resetSummary(for: metrics) {
+            Text("Reset \(resetText)")
+              .font(.caption2)
+              .foregroundStyle(.secondary)
+              .lineLimit(1)
+              .minimumScaleFactor(0.75)
+          }
+        }
+        .multilineTextAlignment(.center)
+        .padding(.horizontal, 14)
       } else {
-        Spacer(minLength: 0)
-        Text("No data yet")
-          .font(.caption)
-          .foregroundStyle(.secondary)
-        Text("Refresh in app")
-          .font(.caption2)
-          .foregroundStyle(.secondary)
-        Spacer(minLength: 0)
+        VStack(spacing: 2) {
+          Text(compactProviderName(for: provider))
+            .font(.caption2.weight(.semibold))
+            .lineLimit(1)
+          Text("No data yet")
+            .font(.caption2)
+            .foregroundStyle(.secondary)
+          Text("Refresh in app")
+            .font(.caption2)
+            .foregroundStyle(.secondary)
+        }
+        .multilineTextAlignment(.center)
       }
     }
-    .padding(10)
+    .padding(6)
   }
 
   private var providerUsage: ProviderUsage? {
@@ -274,24 +294,19 @@ private struct CompactProviderUsageRow: View {
   }
 
   private var shortName: String {
-    switch usage.provider {
-    case .openAI:
-      return "OpenAI"
-    case .zhipu:
-      return "Zhipu"
-    case .zai:
-      return "Z.ai"
-    case .googleAntigravity:
-      return "Google"
-    case .gitHubCopilot:
-      return "Copilot"
-    }
+    compactProviderName(for: usage.provider)
   }
 }
 
 private struct ConcentricQuotaChart: View {
+  enum CenterLabelStyle {
+    case metrics
+    case hidden
+  }
+
   let metrics: [UsageMetric]
   let ringPalette: WidgetRingPalette
+  var centerLabelStyle: CenterLabelStyle = .metrics
 
   var body: some View {
     GeometryReader { proxy in
@@ -318,22 +333,24 @@ private struct ConcentricQuotaChart: View {
             .frame(width: side * 0.64, height: side * 0.64)
         }
 
-        VStack(spacing: 1) {
-          if let outerMetric {
-            Text(percentText(for: outerMetric))
-              .font(.caption.weight(.semibold))
-              .monospacedDigit()
-          } else {
-            Text("--")
-              .font(.caption.weight(.semibold))
-              .foregroundStyle(.secondary)
-          }
+        if centerLabelStyle == .metrics {
+          VStack(spacing: 1) {
+            if let outerMetric {
+              Text(percentText(for: outerMetric))
+                .font(.caption.weight(.semibold))
+                .monospacedDigit()
+            } else {
+              Text("--")
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(.secondary)
+            }
 
-          if let innerMetric {
-            Text(percentText(for: innerMetric))
-              .font(.caption2)
-              .foregroundStyle(.secondary)
-              .monospacedDigit()
+            if let innerMetric {
+              Text(percentText(for: innerMetric))
+                .font(.caption2)
+                .foregroundStyle(.secondary)
+                .monospacedDigit()
+            }
           }
         }
       }
@@ -420,6 +437,69 @@ private func metricSummary(for usage: ProviderUsage) -> String {
   return "\(first.label): \(percentText(for: first))"
 }
 
+private func compactProviderName(for provider: QuotaProvider) -> String {
+  switch provider {
+  case .openAI:
+    return "OpenAI"
+  case .zhipu:
+    return "Zhipu"
+  case .zai:
+    return "Z.ai"
+  case .googleAntigravity:
+    return "Google"
+  case .gitHubCopilot:
+    return "Copilot"
+  }
+}
+
+private func centerPercentSummary(for metrics: [UsageMetric]) -> String {
+  guard let first = metrics.first else {
+    return "--"
+  }
+
+  if metrics.count >= 2, let second = metrics.dropFirst().first {
+    return "\(percentText(for: first)) / \(percentText(for: second))"
+  }
+
+  return percentText(for: first)
+}
+
+private func resetSummary(for metrics: [UsageMetric]) -> String? {
+  for metric in metrics {
+    if let resetIn = metric.resetIn?.trimmingCharacters(in: .whitespacesAndNewlines), !resetIn.isEmpty {
+      return resetIn
+    }
+
+    if let resetAt = metric.resetAt {
+      return relativeResetSummary(until: resetAt)
+    }
+  }
+
+  return nil
+}
+
+private func relativeResetSummary(until date: Date) -> String {
+  let seconds = max(0, Int(date.timeIntervalSinceNow))
+  if seconds < 60 {
+    return "<1m"
+  }
+
+  let totalHours = seconds / 3600
+  let minutes = (seconds % 3600) / 60
+
+  if totalHours >= 24 {
+    let days = totalHours / 24
+    let hours = totalHours % 24
+    return hours > 0 ? "\(days)d \(hours)h" : "\(days)d"
+  }
+
+  if totalHours > 0 {
+    return minutes > 0 ? "\(totalHours)h \(minutes)m" : "\(totalHours)h"
+  }
+
+  return "\(minutes)m"
+}
+
 private func percentText(for metric: UsageMetric?) -> String {
   guard let metric else { return "--" }
   if metric.isUnlimited {
@@ -483,12 +563,26 @@ private func unlimitedColor(for palette: WidgetRingPalette) -> Color {
 
 private extension QuotaEntry {
   func style(for provider: QuotaProvider?) -> WidgetStyleSettings {
+    let globalStyle = settings.widgetStyle
+
     guard let provider else {
-      return settings.widgetStyle
+      return globalStyle
     }
 
     let override = settings.styleOverride(for: provider)
-    return override.useCustomStyle ? override.style : settings.widgetStyle
+
+    guard override.useCustomStyle else {
+      return globalStyle
+    }
+
+    let resolvedBackground = override.style.backgroundStyle == .system
+      ? globalStyle.backgroundStyle
+      : override.style.backgroundStyle
+
+    return WidgetStyleSettings(
+      backgroundStyle: resolvedBackground,
+      ringPalette: override.style.ringPalette
+    )
   }
 }
 
@@ -501,8 +595,8 @@ private extension WidgetBackgroundStyle {
     case .graphite:
       LinearGradient(
         colors: [
-          Color(red: 0.29, green: 0.32, blue: 0.40),
-          Color(red: 0.14, green: 0.16, blue: 0.23)
+          Color(red: 0.28, green: 0.32, blue: 0.44),
+          Color(red: 0.14, green: 0.17, blue: 0.26)
         ],
         startPoint: .topLeading,
         endPoint: .bottomTrailing
@@ -510,8 +604,8 @@ private extension WidgetBackgroundStyle {
     case .ocean:
       LinearGradient(
         colors: [
-          Color(red: 0.22, green: 0.47, blue: 0.74),
-          Color(red: 0.10, green: 0.24, blue: 0.40)
+          Color(red: 0.12, green: 0.62, blue: 0.98),
+          Color(red: 0.03, green: 0.29, blue: 0.78)
         ],
         startPoint: .topLeading,
         endPoint: .bottomTrailing
@@ -519,8 +613,8 @@ private extension WidgetBackgroundStyle {
     case .forest:
       LinearGradient(
         colors: [
-          Color(red: 0.20, green: 0.47, blue: 0.34),
-          Color(red: 0.10, green: 0.25, blue: 0.18)
+          Color(red: 0.12, green: 0.74, blue: 0.38),
+          Color(red: 0.03, green: 0.45, blue: 0.22)
         ],
         startPoint: .topLeading,
         endPoint: .bottomTrailing
@@ -528,8 +622,8 @@ private extension WidgetBackgroundStyle {
     case .sunset:
       LinearGradient(
         colors: [
-          Color(red: 0.74, green: 0.40, blue: 0.25),
-          Color(red: 0.38, green: 0.20, blue: 0.17)
+          Color(red: 0.98, green: 0.47, blue: 0.20),
+          Color(red: 0.84, green: 0.24, blue: 0.15)
         ],
         startPoint: .topLeading,
         endPoint: .bottomTrailing
