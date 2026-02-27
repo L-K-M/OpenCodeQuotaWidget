@@ -734,6 +734,23 @@ struct WidgetStylePreset: Identifiable, Hashable {
       )
     ),
     WidgetStylePreset(
+      id: "purple-nurple",
+      displayName: "Purple Nurple",
+      style: style(
+        "#6A38B5",
+        rings(
+          outerHigh: "#E8D4FF",
+          outerMedium: "#C396FF",
+          outerLow: "#8E59E8",
+          outerUnlimited: "#F2E4FF",
+          innerHigh: "#F4E9FF",
+          innerMedium: "#D9B7FF",
+          innerLow: "#A674F4",
+          innerUnlimited: "#FAF2FF"
+        )
+      )
+    ),
+    WidgetStylePreset(
       id: "copper-ember",
       displayName: "Copper Ember",
       style: style(

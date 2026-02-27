@@ -551,17 +551,14 @@ private func percentText(for metric: UsageMetric?) -> String {
 @ViewBuilder
 private func widgetBackground(for entry: QuotaEntry, provider: QuotaProvider?) -> some View {
   let style = entry.style(for: provider)
-  FancyWidgetBackground(
-    baseColor: backgroundBaseColor(from: style.backgroundHexColor, isTransparent: style.useTransparentBackground),
-    isTransparent: style.useTransparentBackground
-  )
+  if style.useTransparentBackground {
+    Color.clear
+  } else {
+    FancyWidgetBackground(baseColor: backgroundBaseColor(from: style.backgroundHexColor))
+  }
 }
 
-private func backgroundBaseColor(from hexColor: String?, isTransparent: Bool) -> Color? {
-  guard !isTransparent else {
-    return nil
-  }
-
+private func backgroundBaseColor(from hexColor: String?) -> Color? {
   guard var raw = hexColor?.trimmingCharacters(in: .whitespacesAndNewlines), !raw.isEmpty else {
     return nil
   }
@@ -594,97 +591,92 @@ private func backgroundBaseColor(from hexColor: String?, isTransparent: Bool) ->
 
 private struct FancyWidgetBackground: View {
   let baseColor: Color?
-  let isTransparent: Bool
 
   var body: some View {
     GeometryReader { proxy in
       let glowSize = max(proxy.size.width, proxy.size.height)
 
       ZStack {
-        if !isTransparent {
-          ContainerRelativeShape()
-            .fill(baseGradient)
+        ContainerRelativeShape()
+          .fill(baseGradient)
 
-          ContainerRelativeShape()
-            .fill(
-              LinearGradient(
-                colors: [
-                  Color.white.opacity(0.26),
-                  Color.white.opacity(0.09),
-                  Color.white.opacity(0.02),
-                  Color.clear
-                ],
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing
-              )
+        ContainerRelativeShape()
+          .fill(
+            LinearGradient(
+              colors: [
+                Color.white.opacity(0.26),
+                Color.white.opacity(0.09),
+                Color.white.opacity(0.02),
+                Color.clear
+              ],
+              startPoint: .topLeading,
+              endPoint: .bottomTrailing
             )
-            .blendMode(.screen)
+          )
+          .blendMode(.screen)
 
-          Ellipse()
-            .fill(
-              LinearGradient(
-                colors: [
-                  Color.white.opacity(0.45),
-                  Color.white.opacity(0.08),
-                  Color.clear
-                ],
-                startPoint: .top,
-                endPoint: .bottom
-              )
+        Ellipse()
+          .fill(
+            LinearGradient(
+              colors: [
+                Color.white.opacity(0.45),
+                Color.white.opacity(0.08),
+                Color.clear
+              ],
+              startPoint: .top,
+              endPoint: .bottom
             )
-            .frame(width: glowSize * 0.88, height: glowSize * 0.42)
-            .blur(radius: glowSize * 0.05)
-            .offset(x: -proxy.size.width * 0.09, y: -proxy.size.height * 0.28)
+          )
+          .frame(width: glowSize * 0.88, height: glowSize * 0.42)
+          .blur(radius: glowSize * 0.05)
+          .offset(x: -proxy.size.width * 0.09, y: -proxy.size.height * 0.28)
 
-          Ellipse()
-            .fill(
-              RadialGradient(
-                colors: [
-                  (baseColor ?? Color(red: 0.49, green: 0.72, blue: 1)).opacity(0.36),
-                  Color.clear
-                ],
-                center: .center,
-                startRadius: 0,
-                endRadius: glowSize * 0.52
-              )
+        Ellipse()
+          .fill(
+            RadialGradient(
+              colors: [
+                (baseColor ?? Color(red: 0.49, green: 0.72, blue: 1)).opacity(0.36),
+                Color.clear
+              ],
+              center: .center,
+              startRadius: 0,
+              endRadius: glowSize * 0.52
             )
-            .frame(width: glowSize, height: glowSize)
-            .offset(x: proxy.size.width * 0.2, y: proxy.size.height * 0.18)
+          )
+          .frame(width: glowSize, height: glowSize)
+          .offset(x: proxy.size.width * 0.2, y: proxy.size.height * 0.18)
 
-          ContainerRelativeShape()
-            .fill(
-              LinearGradient(
-                colors: [
-                  Color.clear,
-                  Color.black.opacity(0.06),
-                  Color.black.opacity(0.11)
-                ],
-                startPoint: .top,
-                endPoint: .bottom
-              )
+        ContainerRelativeShape()
+          .fill(
+            LinearGradient(
+              colors: [
+                Color.clear,
+                Color.black.opacity(0.06),
+                Color.black.opacity(0.11)
+              ],
+              startPoint: .top,
+              endPoint: .bottom
             )
-        }
+          )
 
         ContainerRelativeShape()
           .inset(by: 0.5)
-          .stroke(Color.white.opacity(isTransparent ? 0.32 : 0.2), lineWidth: 1)
+          .stroke(Color.white.opacity(0.2), lineWidth: 1)
 
-        if !isTransparent {
-          ContainerRelativeShape()
-            .inset(by: 0.5)
-            .stroke(
-              LinearGradient(
-                colors: [
-                  Color.white.opacity(0.2),
-                  Color.white.opacity(0.04),
-                  Color.clear
-                ],
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing
-              ),
-              lineWidth: 0.8
-            )
-        }
+        ContainerRelativeShape()
+          .inset(by: 0.5)
+          .stroke(
+            LinearGradient(
+              colors: [
+                Color.white.opacity(0.2),
+                Color.white.opacity(0.04),
+                Color.clear
+              ],
+              startPoint: .topLeading,
+              endPoint: .bottomTrailing
+            ),
+            lineWidth: 0.8
+          )
       }
     }
   }
