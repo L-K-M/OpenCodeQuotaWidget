@@ -41,6 +41,9 @@ final class StoreRoundTripTests: XCTestCase {
     XCTAssertTrue(settings.widgetVisibility.showFailureCount)
     XCTAssertTrue(settings.widgetVisibility.showResetInfo)
     XCTAssertTrue(settings.widgetVisibility.showOverviewMetricSummary)
+    XCTAssertTrue(settings.widgetVisibility.showPercentageValues)
+    XCTAssertTrue(settings.widgetVisibility.showMediumProgressBars)
+    XCTAssertEqual(settings.widgetVisibility.mediumProviderLimit, 6)
   }
 
   func testSettingsStoreRoundTripPersistsWidgetVisibility() throws {
@@ -57,7 +60,10 @@ final class StoreRoundTripTests: XCTestCase {
         showTimestamp: false,
         showFailureCount: true,
         showResetInfo: false,
-        showOverviewMetricSummary: true
+        showOverviewMetricSummary: true,
+        showPercentageValues: false,
+        showMediumProgressBars: false,
+        mediumProviderLimit: 4
       )
     )
 
@@ -68,5 +74,8 @@ final class StoreRoundTripTests: XCTestCase {
     XCTAssertTrue(loaded.widgetVisibility.showFailureCount)
     XCTAssertFalse(loaded.widgetVisibility.showResetInfo)
     XCTAssertTrue(loaded.widgetVisibility.showOverviewMetricSummary)
+    XCTAssertFalse(loaded.widgetVisibility.showPercentageValues)
+    XCTAssertFalse(loaded.widgetVisibility.showMediumProgressBars)
+    XCTAssertEqual(loaded.widgetVisibility.mediumProviderLimit, 4)
   }
 }

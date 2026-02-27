@@ -590,21 +590,68 @@ public struct WidgetVisibilitySettings: Codable, Hashable, Sendable {
   public var showFailureCount: Bool
   public var showResetInfo: Bool
   public var showOverviewMetricSummary: Bool
+  public var showPercentageValues: Bool
+  public var showMediumProgressBars: Bool
+  public var mediumProviderLimit: Int
 
   public init(
     showTimestamp: Bool = true,
     showFailureCount: Bool = true,
     showResetInfo: Bool = true,
-    showOverviewMetricSummary: Bool = true
+    showOverviewMetricSummary: Bool = true,
+    showPercentageValues: Bool = true,
+    showMediumProgressBars: Bool = true,
+    mediumProviderLimit: Int = 6
   ) {
     self.showTimestamp = showTimestamp
     self.showFailureCount = showFailureCount
     self.showResetInfo = showResetInfo
     self.showOverviewMetricSummary = showOverviewMetricSummary
+    self.showPercentageValues = showPercentageValues
+    self.showMediumProgressBars = showMediumProgressBars
+    self.mediumProviderLimit = Self.clampMediumProviderLimit(mediumProviderLimit)
   }
 
   public static var `default`: WidgetVisibilitySettings {
     WidgetVisibilitySettings()
+  }
+
+  private enum CodingKeys: String, CodingKey {
+    case showTimestamp
+    case showFailureCount
+    case showResetInfo
+    case showOverviewMetricSummary
+    case showPercentageValues
+    case showMediumProgressBars
+    case mediumProviderLimit
+  }
+
+  public init(from decoder: Decoder) throws {
+    let container = try decoder.container(keyedBy: CodingKeys.self)
+
+    showTimestamp = (try? container.decodeIfPresent(Bool.self, forKey: .showTimestamp)) ?? true
+    showFailureCount = (try? container.decodeIfPresent(Bool.self, forKey: .showFailureCount)) ?? true
+    showResetInfo = (try? container.decodeIfPresent(Bool.self, forKey: .showResetInfo)) ?? true
+    showOverviewMetricSummary = (try? container.decodeIfPresent(Bool.self, forKey: .showOverviewMetricSummary)) ?? true
+    showPercentageValues = (try? container.decodeIfPresent(Bool.self, forKey: .showPercentageValues)) ?? true
+    showMediumProgressBars = (try? container.decodeIfPresent(Bool.self, forKey: .showMediumProgressBars)) ?? true
+    let decodedProviderLimit = (try? container.decodeIfPresent(Int.self, forKey: .mediumProviderLimit)) ?? 6
+    mediumProviderLimit = Self.clampMediumProviderLimit(decodedProviderLimit)
+  }
+
+  public func encode(to encoder: Encoder) throws {
+    var container = encoder.container(keyedBy: CodingKeys.self)
+    try container.encode(showTimestamp, forKey: .showTimestamp)
+    try container.encode(showFailureCount, forKey: .showFailureCount)
+    try container.encode(showResetInfo, forKey: .showResetInfo)
+    try container.encode(showOverviewMetricSummary, forKey: .showOverviewMetricSummary)
+    try container.encode(showPercentageValues, forKey: .showPercentageValues)
+    try container.encode(showMediumProgressBars, forKey: .showMediumProgressBars)
+    try container.encode(Self.clampMediumProviderLimit(mediumProviderLimit), forKey: .mediumProviderLimit)
+  }
+
+  private static func clampMediumProviderLimit(_ value: Int) -> Int {
+    max(1, min(12, value))
   }
 }
 

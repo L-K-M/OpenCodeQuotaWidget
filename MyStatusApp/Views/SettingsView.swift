@@ -193,6 +193,14 @@ struct SettingsView: View {
         settingsRow(title: "Visible information") {
           VStack(alignment: .leading, spacing: 8) {
             Toggle(
+              "Show percentages in widgets",
+              isOn: model.widgetVisibilityBinding(for: \.showPercentageValues)
+            )
+            Toggle(
+              "Progress bars in medium widget",
+              isOn: model.widgetVisibilityBinding(for: \.showMediumProgressBars)
+            )
+            Toggle(
               "Timestamp in medium widget",
               isOn: model.widgetVisibilityBinding(for: \.showTimestamp)
             )
@@ -208,6 +216,22 @@ struct SettingsView: View {
               "Metric summary in overview widget",
               isOn: model.widgetVisibilityBinding(for: \.showOverviewMetricSummary)
             )
+
+            HStack(spacing: 10) {
+              Text("Providers in medium widget")
+              Spacer()
+              Stepper(
+                "",
+                value: model.widgetVisibilityIntBinding(for: \.mediumProviderLimit, range: 1...12),
+                in: 1...12
+              )
+              .labelsHidden()
+
+              Text("\(model.widgetVisibility.mediumProviderLimit)")
+                .font(.subheadline.weight(.semibold))
+                .monospacedDigit()
+                .frame(minWidth: 24, alignment: .trailing)
+            }
           }
           .toggleStyle(.switch)
         }

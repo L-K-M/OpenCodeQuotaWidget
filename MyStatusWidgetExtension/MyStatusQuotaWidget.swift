@@ -120,11 +120,20 @@ private struct OverviewSmallQuotaView: View {
           .font(.caption.weight(.semibold))
           .lineLimit(1)
 
-        ConcentricQuotaChart(metrics: chartMetrics(for: usage), ringColors: style.ringColors)
+        ConcentricQuotaChart(
+          metrics: chartMetrics(for: usage),
+          ringColors: style.ringColors,
+          centerLabelStyle: entry.settings.widgetVisibility.showPercentageValues ? .metrics : .hidden
+        )
           .frame(maxWidth: .infinity, minHeight: 88, maxHeight: .infinity)
 
         if entry.settings.widgetVisibility.showOverviewMetricSummary {
-          Text(metricSummary(for: usage))
+          Text(
+            metricSummary(
+              for: usage,
+              showPercentages: entry.settings.widgetVisibility.showPercentageValues
+            )
+          )
             .font(.caption2)
             .foregroundStyle(.secondary)
             .lineLimit(1)
@@ -172,16 +181,26 @@ private struct ProviderSmallQuotaView: View {
         ConcentricQuotaChart(
           metrics: metrics,
           ringColors: entry.style(for: provider).ringColors,
-          centerLabelStyle: .hidden
+          centerLabelStyle: entry.settings.widgetVisibility.showPercentageValues ? .metrics : .hidden
         )
           .frame(maxWidth: .infinity, maxHeight: .infinity)
 
-        Text(compactProviderName(for: provider))
-          .font(.caption2.weight(.semibold))
-          .lineLimit(1)
-          .minimumScaleFactor(0.75)
-          .multilineTextAlignment(.center)
-          .padding(.horizontal, 14)
+        if entry.settings.widgetVisibility.showPercentageValues {
+          Text(compactProviderName(for: provider))
+            .font(.caption2.weight(.semibold))
+            .lineLimit(1)
+            .minimumScaleFactor(0.75)
+            .multilineTextAlignment(.center)
+            .padding(.horizontal, 8)
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+        } else {
+          Text(compactProviderName(for: provider))
+            .font(.caption2.weight(.semibold))
+            .lineLimit(1)
+            .minimumScaleFactor(0.75)
+            .multilineTextAlignment(.center)
+            .padding(.horizontal, 14)
+        }
 
         if entry.settings.widgetVisibility.showResetInfo, let resetText = resetSummary(for: metrics) {
           Text(resetDisplayText(for: resetText))
@@ -233,8 +252,15 @@ private struct MediumCompactQuotaView: View {
       }
 
       if let snapshot = entry.snapshot, !snapshot.providers.isEmpty {
-        ForEach(sortedProviders(snapshot.providers).prefix(6)) { usage in
-          CompactProviderUsageRow(usage: usage, ringColors: entry.style(for: usage.provider).ringColors)
+        let providerLimit = max(1, min(entry.settings.widgetVisibility.mediumProviderLimit, 12))
+
+        ForEach(sortedProviders(snapshot.providers).prefix(providerLimit)) { usage in
+          CompactProviderUsageRow(
+            usage: usage,
+            ringColors: entry.style(for: usage.provider).ringColors,
+            showProgressBar: entry.settings.widgetVisibility.showMediumProgressBars,
+            showPercentages: entry.settings.widgetVisibility.showPercentageValues
+          )
         }
 
         if entry.settings.widgetVisibility.showFailureCount, !snapshot.failures.isEmpty {
@@ -265,6 +291,8 @@ private struct MediumCompactQuotaView: View {
 private struct CompactProviderUsageRow: View {
   let usage: ProviderUsage
   let ringColors: WidgetRingColors
+  let showProgressBar: Bool
+  let showPercentages: Bool
 
   var body: some View {
     HStack(spacing: 6) {
@@ -273,17 +301,23 @@ private struct CompactProviderUsageRow: View {
         .lineLimit(1)
         .frame(width: 58, alignment: .leading)
 
-      MiniProgressBar(
-        percent: metric?.remainingPercent,
-        unlimited: metric?.isUnlimited ?? false,
-        ringColors: ringColors
-      )
-        .frame(height: 5)
+      if showProgressBar {
+        MiniProgressBar(
+          percent: metric?.remainingPercent,
+          unlimited: metric?.isUnlimited ?? false,
+          ringColors: ringColors
+        )
+          .frame(height: 5)
+      } else {
+        Spacer(minLength: 0)
+      }
 
-      Text(percentText(for: metric))
-        .font(.caption2.weight(.semibold))
-        .monospacedDigit()
-        .frame(width: 32, alignment: .trailing)
+      if showPercentages {
+        Text(percentText(for: metric))
+          .font(.caption2.weight(.semibold))
+          .monospacedDigit()
+          .frame(width: 32, alignment: .trailing)
+      }
     }
   }
 
@@ -425,10 +459,17 @@ private func chartMetrics(for usage: ProviderUsage) -> [UsageMetric] {
   return Array(candidates.prefix(2))
 }
 
-private func metricSummary(for usage: ProviderUsage) -> String {
+private func metricSummary(for usage: ProviderUsage, showPercentages: Bool) -> String {
   let metrics = chartMetrics(for: usage)
   guard let first = metrics.first else {
     return "No quota metrics"
+  }
+
+  guard showPercentages else {
+    if metrics.count >= 2 {
+      return "\(metrics.count) limits tracked"
+    }
+    return first.label
   }
 
   if metrics.count >= 2, let second = metrics.dropFirst().first {

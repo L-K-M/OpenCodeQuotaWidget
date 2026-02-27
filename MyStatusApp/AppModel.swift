@@ -225,6 +225,20 @@ final class AppModel: ObservableObject {
     )
   }
 
+  func widgetVisibilityIntBinding(
+    for keyPath: WritableKeyPath<WidgetVisibilitySettings, Int>,
+    range: ClosedRange<Int>
+  ) -> Binding<Int> {
+    Binding(
+      get: { self.widgetVisibility[keyPath: keyPath] },
+      set: { newValue in
+        let clamped = min(max(newValue, range.lowerBound), range.upperBound)
+        self.widgetVisibility[keyPath: keyPath] = clamped
+        self.saveConfiguration()
+      }
+    )
+  }
+
   func widgetBackgroundColorBinding() -> Binding<Color> {
     Binding(
       get: { Self.color(fromHex: self.widgetStyle.backgroundHexColor) },
