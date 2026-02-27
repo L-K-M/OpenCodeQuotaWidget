@@ -189,7 +189,7 @@ private struct ProviderSmallQuotaView: View {
             .minimumScaleFactor(0.75)
             .padding(.horizontal, 8)
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
-            .offset(y: 4)
+            .offset(y: 22)
         }
       } else {
         VStack(spacing: 2) {
