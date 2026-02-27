@@ -9,6 +9,7 @@ import QuotaCore
 final class AppModel: ObservableObject {
   @Published var refreshIntervalMinutes: Int = 30
   @Published var widgetStyle: WidgetStyleSettings = .default
+  @Published var widgetVisibility: WidgetVisibilitySettings = .default
   @Published var providerStyleSettings: [QuotaProvider: ProviderStyleSettings]
   @Published var credentialStatuses: [ProviderCredentialStatus] = []
   @Published var authAccessGranted = false
@@ -25,6 +26,7 @@ final class AppModel: ObservableObject {
   private let sandboxAccess: OpenCodeSandboxAccess
   private var cachedAppGroupSettingsStore: SettingsStore?
   private var cachedAppGroupSnapshotStore: SnapshotStore?
+  private var autoRefreshTask: Task<Void, Never>?
 
   init() {
     let baseDirectory = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first
@@ -63,6 +65,11 @@ final class AppModel: ObservableObject {
     }
 
     reloadCredentialStatuses()
+    restartAutoRefreshLoop()
+
+    if shouldRefreshOnBootstrap() {
+      await refreshNow()
+    }
   }
 
   func loadConfiguration() async {
@@ -76,6 +83,7 @@ final class AppModel: ObservableObject {
 
     refreshIntervalMinutes = max(15, settings.refreshIntervalMinutes)
     widgetStyle = settings.widgetStyle
+    widgetVisibility = settings.widgetVisibility
     providerStyleSettings = Dictionary(
       uniqueKeysWithValues: QuotaProvider.allCases.map { provider in
         (provider, settings.styleOverride(for: provider))
@@ -103,6 +111,10 @@ final class AppModel: ObservableObject {
   }
 
   func refreshNow() async {
+    guard !isRefreshing else {
+      return
+    }
+
     isRefreshing = true
     defer { isRefreshing = false }
 
@@ -195,6 +207,19 @@ final class AppModel: ObservableObject {
       get: { self.refreshIntervalMinutes },
       set: { newValue in
         self.refreshIntervalMinutes = max(15, newValue)
+        self.saveConfiguration()
+        self.restartAutoRefreshLoop()
+      }
+    )
+  }
+
+  func widgetVisibilityBinding(
+    for keyPath: WritableKeyPath<WidgetVisibilitySettings, Bool>
+  ) -> Binding<Bool> {
+    Binding(
+      get: { self.widgetVisibility[keyPath: keyPath] },
+      set: { newValue in
+        self.widgetVisibility[keyPath: keyPath] = newValue
         self.saveConfiguration()
       }
     )
@@ -344,8 +369,48 @@ final class AppModel: ObservableObject {
       widgetStyle: widgetStyle,
       providerStyleSettings: QuotaProvider.allCases.map { provider in
         providerStyle(for: provider)
-      }
+      },
+      widgetVisibility: widgetVisibility
     )
+  }
+
+  private func restartAutoRefreshLoop() {
+    autoRefreshTask?.cancel()
+
+    autoRefreshTask = Task { [weak self] in
+      while !Task.isCancelled {
+        guard let self else {
+          return
+        }
+
+        let intervalNanoseconds = await self.autoRefreshIntervalNanoseconds()
+        do {
+          try await Task.sleep(nanoseconds: intervalNanoseconds)
+        } catch {
+          return
+        }
+
+        if Task.isCancelled {
+          return
+        }
+
+        await self.refreshNow()
+      }
+    }
+  }
+
+  private func autoRefreshIntervalNanoseconds() -> UInt64 {
+    let seconds = UInt64(max(15, refreshIntervalMinutes) * 60)
+    return seconds * 1_000_000_000
+  }
+
+  private func shouldRefreshOnBootstrap(now: Date = Date()) -> Bool {
+    guard let snapshot else {
+      return true
+    }
+
+    let maxAgeSeconds = TimeInterval(max(15, refreshIntervalMinutes) * 60)
+    return now.timeIntervalSince(snapshot.generatedAt) >= maxAgeSeconds
   }
 
   private static func color(fromHex hex: String?) -> Color {
@@ -522,16 +587,6 @@ final class AppModel: ObservableObject {
   }
 
   private func reloadWidgetTimelines() {
-    for kind in SharedConstants.allWidgetKinds {
-      WidgetCenter.shared.reloadTimelines(ofKind: kind)
-    }
     WidgetCenter.shared.reloadAllTimelines()
-
-    DispatchQueue.main.asyncAfter(deadline: .now() + 0.75) {
-      for kind in SharedConstants.allWidgetKinds {
-        WidgetCenter.shared.reloadTimelines(ofKind: kind)
-      }
-      WidgetCenter.shared.reloadAllTimelines()
-    }
   }
 }

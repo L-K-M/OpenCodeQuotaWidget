@@ -190,6 +190,30 @@ struct SettingsView: View {
 
         Divider()
 
+        settingsRow(title: "Visible information") {
+          VStack(alignment: .leading, spacing: 8) {
+            Toggle(
+              "Timestamp in medium widget",
+              isOn: model.widgetVisibilityBinding(for: \.showTimestamp)
+            )
+            Toggle(
+              "Failure count in medium widget",
+              isOn: model.widgetVisibilityBinding(for: \.showFailureCount)
+            )
+            Toggle(
+              "Reset countdown in provider widgets",
+              isOn: model.widgetVisibilityBinding(for: \.showResetInfo)
+            )
+            Toggle(
+              "Metric summary in overview widget",
+              isOn: model.widgetVisibilityBinding(for: \.showOverviewMetricSummary)
+            )
+          }
+          .toggleStyle(.switch)
+        }
+
+        Divider()
+
         settingsRow(title: "Background color") {
           ColorPicker("", selection: model.widgetBackgroundColorBinding(), supportsOpacity: true)
             .labelsHidden()

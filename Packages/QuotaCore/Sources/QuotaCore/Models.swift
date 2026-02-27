@@ -585,17 +585,42 @@ public struct ProviderStyleSettings: Codable, Hashable, Sendable {
   }
 }
 
+public struct WidgetVisibilitySettings: Codable, Hashable, Sendable {
+  public var showTimestamp: Bool
+  public var showFailureCount: Bool
+  public var showResetInfo: Bool
+  public var showOverviewMetricSummary: Bool
+
+  public init(
+    showTimestamp: Bool = true,
+    showFailureCount: Bool = true,
+    showResetInfo: Bool = true,
+    showOverviewMetricSummary: Bool = true
+  ) {
+    self.showTimestamp = showTimestamp
+    self.showFailureCount = showFailureCount
+    self.showResetInfo = showResetInfo
+    self.showOverviewMetricSummary = showOverviewMetricSummary
+  }
+
+  public static var `default`: WidgetVisibilitySettings {
+    WidgetVisibilitySettings()
+  }
+}
+
 public struct AppSettings: Codable, Hashable, Sendable {
   public var refreshIntervalMinutes: Int
   public var providers: [ProviderSettings]
   public var widgetStyle: WidgetStyleSettings
   public var providerStyleSettings: [ProviderStyleSettings]
+  public var widgetVisibility: WidgetVisibilitySettings
 
   public init(
     refreshIntervalMinutes: Int = 30,
     providers: [ProviderSettings],
     widgetStyle: WidgetStyleSettings = .default,
-    providerStyleSettings: [ProviderStyleSettings] = []
+    providerStyleSettings: [ProviderStyleSettings] = [],
+    widgetVisibility: WidgetVisibilitySettings = .default
   ) {
     self.refreshIntervalMinutes = refreshIntervalMinutes
     self.providers = AppSettings.normalizedProviderSettings(providers)
@@ -604,6 +629,7 @@ public struct AppSettings: Codable, Hashable, Sendable {
       providerStyleSettings.isEmpty ? AppSettings.defaultProviderStyleSettings() : providerStyleSettings,
       fallbackStyle: widgetStyle
     )
+    self.widgetVisibility = widgetVisibility
   }
 
   public static var `default`: AppSettings {
@@ -611,7 +637,8 @@ public struct AppSettings: Codable, Hashable, Sendable {
       refreshIntervalMinutes: 30,
       providers: QuotaProvider.allCases.map { ProviderSettings(provider: $0, isEnabled: true) },
       widgetStyle: .default,
-      providerStyleSettings: defaultProviderStyleSettings()
+      providerStyleSettings: defaultProviderStyleSettings(),
+      widgetVisibility: .default
     )
   }
 
@@ -629,6 +656,7 @@ public struct AppSettings: Codable, Hashable, Sendable {
     case providers
     case widgetStyle
     case providerStyleSettings
+    case widgetVisibility
   }
 
   public init(from decoder: Decoder) throws {
@@ -650,6 +678,8 @@ public struct AppSettings: Codable, Hashable, Sendable {
       decodedStyleSettings,
       fallbackStyle: widgetStyle
     )
+
+    widgetVisibility = (try? container.decodeIfPresent(WidgetVisibilitySettings.self, forKey: .widgetVisibility)) ?? .default
   }
 
   public func encode(to encoder: Encoder) throws {
@@ -658,6 +688,7 @@ public struct AppSettings: Codable, Hashable, Sendable {
     try container.encode(providers, forKey: .providers)
     try container.encode(widgetStyle, forKey: .widgetStyle)
     try container.encode(providerStyleSettings, forKey: .providerStyleSettings)
+    try container.encode(widgetVisibility, forKey: .widgetVisibility)
   }
 
   private static func defaultProviderStyleSettings() -> [ProviderStyleSettings] {

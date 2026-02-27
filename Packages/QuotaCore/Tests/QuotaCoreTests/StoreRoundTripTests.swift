@@ -37,5 +37,36 @@ final class StoreRoundTripTests: XCTestCase {
     let settings = try store.load()
     XCTAssertEqual(settings.refreshIntervalMinutes, 30)
     XCTAssertEqual(settings.providers.count, QuotaProvider.allCases.count)
+    XCTAssertTrue(settings.widgetVisibility.showTimestamp)
+    XCTAssertTrue(settings.widgetVisibility.showFailureCount)
+    XCTAssertTrue(settings.widgetVisibility.showResetInfo)
+    XCTAssertTrue(settings.widgetVisibility.showOverviewMetricSummary)
+  }
+
+  func testSettingsStoreRoundTripPersistsWidgetVisibility() throws {
+    let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+    let fileURL = tempDir.appendingPathComponent("settings.json")
+    let store = SettingsStore(fileURL: fileURL)
+
+    let settings = AppSettings(
+      refreshIntervalMinutes: 45,
+      providers: QuotaProvider.allCases.map { ProviderSettings(provider: $0, isEnabled: true) },
+      widgetStyle: .default,
+      providerStyleSettings: QuotaProvider.allCases.map { ProviderStyleSettings.defaultValue(for: $0) },
+      widgetVisibility: WidgetVisibilitySettings(
+        showTimestamp: false,
+        showFailureCount: true,
+        showResetInfo: false,
+        showOverviewMetricSummary: true
+      )
+    )
+
+    try store.save(settings)
+    let loaded = try store.load()
+
+    XCTAssertFalse(loaded.widgetVisibility.showTimestamp)
+    XCTAssertTrue(loaded.widgetVisibility.showFailureCount)
+    XCTAssertFalse(loaded.widgetVisibility.showResetInfo)
+    XCTAssertTrue(loaded.widgetVisibility.showOverviewMetricSummary)
   }
 }

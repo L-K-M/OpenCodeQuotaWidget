@@ -123,10 +123,12 @@ private struct OverviewSmallQuotaView: View {
         ConcentricQuotaChart(metrics: chartMetrics(for: usage), ringColors: style.ringColors)
           .frame(maxWidth: .infinity, minHeight: 88, maxHeight: .infinity)
 
-        Text(metricSummary(for: usage))
-          .font(.caption2)
-          .foregroundStyle(.secondary)
-          .lineLimit(1)
+        if entry.settings.widgetVisibility.showOverviewMetricSummary {
+          Text(metricSummary(for: usage))
+            .font(.caption2)
+            .foregroundStyle(.secondary)
+            .lineLimit(1)
+        }
       } else {
         Spacer(minLength: 0)
         Text("OpenCodeQuota app")
@@ -181,7 +183,7 @@ private struct ProviderSmallQuotaView: View {
           .multilineTextAlignment(.center)
           .padding(.horizontal, 14)
 
-        if let resetText = resetSummary(for: metrics) {
+        if entry.settings.widgetVisibility.showResetInfo, let resetText = resetSummary(for: metrics) {
           Text(resetDisplayText(for: resetText))
             .font(.caption2)
             .foregroundStyle(.secondary)
@@ -223,7 +225,7 @@ private struct MediumCompactQuotaView: View {
         Text("AI Quota")
           .font(.caption.weight(.semibold))
         Spacer()
-        if let snapshot = entry.snapshot {
+        if entry.settings.widgetVisibility.showTimestamp, let snapshot = entry.snapshot {
           Text(snapshot.generatedAt, style: .time)
             .font(.caption2)
             .foregroundStyle(.secondary)
@@ -235,7 +237,7 @@ private struct MediumCompactQuotaView: View {
           CompactProviderUsageRow(usage: usage, ringColors: entry.style(for: usage.provider).ringColors)
         }
 
-        if !snapshot.failures.isEmpty {
+        if entry.settings.widgetVisibility.showFailureCount, !snapshot.failures.isEmpty {
           Text("\(snapshot.failures.count) unavailable")
             .font(.caption2)
             .foregroundStyle(.orange)
