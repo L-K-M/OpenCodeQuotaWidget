@@ -238,6 +238,20 @@ struct SettingsView: View {
 
         Divider()
 
+        settingsRow(title: "Style preset") {
+          Picker("", selection: model.widgetStylePresetBinding()) {
+            Text("Custom").tag(model.customStylePresetID)
+            ForEach(model.stylePresets) { preset in
+              Text(preset.displayName).tag(preset.id)
+            }
+          }
+          .labelsHidden()
+          .pickerStyle(.menu)
+          .frame(minWidth: 180, maxWidth: 260, alignment: .leading)
+        }
+
+        Divider()
+
         settingsRow(title: "Transparent background") {
           Toggle("", isOn: model.widgetTransparentBackgroundBinding())
             .labelsHidden()
@@ -422,6 +436,20 @@ struct SettingsView: View {
         }
 
         if providerStyle.useCustomStyle {
+          Divider()
+
+          settingsRow(title: "Style preset") {
+            Picker("", selection: model.providerStylePresetBinding(for: provider)) {
+              Text("Custom").tag(model.customStylePresetID)
+              ForEach(model.stylePresets) { preset in
+                Text(preset.displayName).tag(preset.id)
+              }
+            }
+            .labelsHidden()
+            .pickerStyle(.menu)
+            .frame(minWidth: 180, maxWidth: 260, alignment: .leading)
+          }
+
           Divider()
 
           settingsRow(title: "Transparent background") {
