@@ -37,6 +37,7 @@ final class StoreRoundTripTests: XCTestCase {
     let settings = try store.load()
     XCTAssertEqual(settings.refreshIntervalMinutes, 30)
     XCTAssertEqual(settings.providers.count, QuotaProvider.allCases.count)
+    XCTAssertFalse(settings.widgetStyle.useTransparentBackground)
     XCTAssertTrue(settings.widgetVisibility.showTimestamp)
     XCTAssertTrue(settings.widgetVisibility.showFailureCount)
     XCTAssertTrue(settings.widgetVisibility.showResetInfo)
@@ -54,7 +55,7 @@ final class StoreRoundTripTests: XCTestCase {
     let settings = AppSettings(
       refreshIntervalMinutes: 45,
       providers: QuotaProvider.allCases.map { ProviderSettings(provider: $0, isEnabled: true) },
-      widgetStyle: .default,
+      widgetStyle: WidgetStyleSettings(useTransparentBackground: true),
       providerStyleSettings: QuotaProvider.allCases.map { ProviderStyleSettings.defaultValue(for: $0) },
       widgetVisibility: WidgetVisibilitySettings(
         showTimestamp: false,
@@ -70,6 +71,7 @@ final class StoreRoundTripTests: XCTestCase {
     try store.save(settings)
     let loaded = try store.load()
 
+    XCTAssertTrue(loaded.widgetStyle.useTransparentBackground)
     XCTAssertFalse(loaded.widgetVisibility.showTimestamp)
     XCTAssertTrue(loaded.widgetVisibility.showFailureCount)
     XCTAssertFalse(loaded.widgetVisibility.showResetInfo)

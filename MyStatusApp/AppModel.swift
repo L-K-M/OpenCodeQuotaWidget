@@ -244,6 +244,17 @@ final class AppModel: ObservableObject {
       get: { Self.color(fromHex: self.widgetStyle.backgroundHexColor) },
       set: { newValue in
         self.widgetStyle.backgroundHexColor = Self.hexColor(from: newValue, allowTransparency: true)
+        self.widgetStyle.useTransparentBackground = false
+        self.saveConfiguration()
+      }
+    )
+  }
+
+  func widgetTransparentBackgroundBinding() -> Binding<Bool> {
+    Binding(
+      get: { self.widgetStyle.useTransparentBackground },
+      set: { newValue in
+        self.widgetStyle.useTransparentBackground = newValue
         self.saveConfiguration()
       }
     )
@@ -283,7 +294,8 @@ final class AppModel: ObservableObject {
 
     return WidgetStyleSettings(
       backgroundHexColor: providerStyle.style.backgroundHexColor ?? widgetStyle.backgroundHexColor,
-      ringColors: providerStyle.style.ringColors
+      ringColors: providerStyle.style.ringColors,
+      useTransparentBackground: providerStyle.style.useTransparentBackground
     )
   }
 
@@ -311,6 +323,18 @@ final class AppModel: ObservableObject {
       set: { newValue in
         self.updateProviderStyle(for: provider) { style in
           style.style.backgroundHexColor = Self.hexColor(from: newValue, allowTransparency: true)
+          style.style.useTransparentBackground = false
+        }
+      }
+    )
+  }
+
+  func providerTransparentBackgroundBinding(for provider: QuotaProvider) -> Binding<Bool> {
+    Binding(
+      get: { self.providerStyle(for: provider).style.useTransparentBackground },
+      set: { newValue in
+        self.updateProviderStyle(for: provider) { style in
+          style.style.useTransparentBackground = newValue
         }
       }
     )

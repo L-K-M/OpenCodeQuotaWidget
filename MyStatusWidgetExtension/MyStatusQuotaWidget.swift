@@ -551,10 +551,113 @@ private func percentText(for metric: UsageMetric?) -> String {
 @ViewBuilder
 private func widgetBackground(for entry: QuotaEntry, provider: QuotaProvider?) -> some View {
   let style = entry.style(for: provider)
-  if let color = Color(hexColor: style.backgroundHexColor) {
-    color
-  } else {
-    Color.clear
+  FancyWidgetBackground(
+    baseColor: Color(hexColor: style.backgroundHexColor),
+    isTransparent: style.useTransparentBackground
+  )
+}
+
+private struct FancyWidgetBackground: View {
+  let baseColor: Color?
+  let isTransparent: Bool
+
+  var body: some View {
+    GeometryReader { proxy in
+      ZStack {
+        if !isTransparent {
+          ZStack {
+            ContainerRelativeShape()
+              .fill(baseGradient)
+
+            Circle()
+              .fill(Color.white.opacity(0.24))
+              .frame(width: proxy.size.width * 0.58, height: proxy.size.width * 0.58)
+              .blur(radius: proxy.size.width * 0.12)
+              .offset(x: proxy.size.width * 0.2, y: -proxy.size.height * 0.28)
+
+            Circle()
+              .fill((baseColor ?? Color(red: 0.46, green: 0.67, blue: 0.98)).opacity(0.34))
+              .frame(width: proxy.size.width * 0.9, height: proxy.size.width * 0.9)
+              .blur(radius: proxy.size.width * 0.16)
+              .offset(x: -proxy.size.width * 0.22, y: proxy.size.height * 0.32)
+
+            SunsetWaveShape(
+              amplitude: max(4, proxy.size.height * 0.07),
+              frequency: 1.25,
+              phase: .pi * 0.15,
+              verticalPosition: 0.58
+            )
+              .stroke(Color.white.opacity(0.28), lineWidth: 1.3)
+
+            SunsetWaveShape(
+              amplitude: max(6, proxy.size.height * 0.1),
+              frequency: 1.05,
+              phase: -.pi * 0.35,
+              verticalPosition: 0.7
+            )
+              .stroke(Color.black.opacity(0.2), lineWidth: 2.0)
+
+            Rectangle()
+              .fill(Color.white.opacity(0.18))
+              .frame(height: 1)
+              .offset(y: proxy.size.height * 0.14)
+          }
+          .clipShape(ContainerRelativeShape())
+        }
+
+        ContainerRelativeShape()
+          .inset(by: 0.5)
+          .stroke(Color.white.opacity(isTransparent ? 0.34 : 0.22), lineWidth: 1)
+
+        if !isTransparent {
+          ContainerRelativeShape()
+            .inset(by: 7)
+            .stroke(Color.white.opacity(0.08), lineWidth: 0.8)
+        }
+      }
+    }
+  }
+
+  private var baseGradient: LinearGradient {
+    let tint = baseColor ?? Color(red: 0.35, green: 0.58, blue: 0.95)
+    return LinearGradient(
+      colors: [
+        tint.opacity(0.95),
+        Color(red: 0.34, green: 0.53, blue: 0.86).opacity(0.92),
+        Color(red: 0.22, green: 0.37, blue: 0.7).opacity(0.96)
+      ],
+      startPoint: .topLeading,
+      endPoint: .bottomTrailing
+    )
+  }
+}
+
+private struct SunsetWaveShape: Shape {
+  let amplitude: CGFloat
+  let frequency: CGFloat
+  let phase: CGFloat
+  let verticalPosition: CGFloat
+
+  func path(in rect: CGRect) -> Path {
+    var path = Path()
+    guard rect.width > 0 else {
+      return path
+    }
+
+    let baseline = rect.height * verticalPosition
+    let step = max(3, rect.width / 64)
+
+    path.move(to: CGPoint(x: rect.minX, y: baseline))
+
+    var x = rect.minX
+    while x <= rect.maxX {
+      let normalizedX = (x - rect.minX) / rect.width
+      let y = baseline + sin((normalizedX * .pi * 2 * frequency) + phase) * amplitude
+      path.addLine(to: CGPoint(x: x, y: y))
+      x += step
+    }
+
+    return path
   }
 }
 
@@ -596,7 +699,8 @@ private extension QuotaEntry {
 
     return WidgetStyleSettings(
       backgroundHexColor: resolvedBackground,
-      ringColors: override.style.ringColors
+      ringColors: override.style.ringColors,
+      useTransparentBackground: override.style.useTransparentBackground
     )
   }
 }

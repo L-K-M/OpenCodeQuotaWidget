@@ -238,10 +238,19 @@ struct SettingsView: View {
 
         Divider()
 
+        settingsRow(title: "Transparent background") {
+          Toggle("", isOn: model.widgetTransparentBackgroundBinding())
+            .labelsHidden()
+            .toggleStyle(.switch)
+        }
+
+        Divider()
+
         settingsRow(title: "Background color") {
           ColorPicker("", selection: model.widgetBackgroundColorBinding(), supportsOpacity: true)
             .labelsHidden()
             .frame(width: 48)
+            .disabled(model.widgetStyle.useTransparentBackground)
         }
 
         Divider()
@@ -415,10 +424,19 @@ struct SettingsView: View {
         if providerStyle.useCustomStyle {
           Divider()
 
+          settingsRow(title: "Transparent background") {
+            Toggle("", isOn: model.providerTransparentBackgroundBinding(for: provider))
+              .labelsHidden()
+              .toggleStyle(.switch)
+          }
+
+          Divider()
+
           settingsRow(title: "Background color") {
             ColorPicker("", selection: model.providerBackgroundColorBinding(for: provider), supportsOpacity: true)
               .labelsHidden()
               .frame(width: 48)
+              .disabled(providerStyle.style.useTransparentBackground)
           }
 
           Divider()

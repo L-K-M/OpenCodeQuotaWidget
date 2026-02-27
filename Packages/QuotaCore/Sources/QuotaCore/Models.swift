@@ -445,18 +445,22 @@ public struct WidgetRingColors: Codable, Hashable, Sendable {
 public struct WidgetStyleSettings: Codable, Hashable, Sendable {
   public var backgroundHexColor: String?
   public var ringColors: WidgetRingColors
+  public var useTransparentBackground: Bool
 
   public init(
     backgroundHexColor: String? = nil,
-    ringColors: WidgetRingColors = .default
+    ringColors: WidgetRingColors = .default,
+    useTransparentBackground: Bool = false
   ) {
     self.backgroundHexColor = normalizeHexColor(backgroundHexColor)
     self.ringColors = ringColors
+    self.useTransparentBackground = useTransparentBackground
   }
 
   private enum CodingKeys: String, CodingKey {
     case backgroundHexColor
     case ringColors
+    case useTransparentBackground
     case showBackground
     case backgroundStyle
     case ringPalette
@@ -464,6 +468,7 @@ public struct WidgetStyleSettings: Codable, Hashable, Sendable {
 
   public init(from decoder: Decoder) throws {
     let container = try decoder.container(keyedBy: CodingKeys.self)
+    let legacyShowBackground = try? container.decodeIfPresent(Bool.self, forKey: .showBackground)
 
     let decodedBackground = (try? container.decodeIfPresent(String.self, forKey: .backgroundHexColor)) ?? nil
     let decodedBackgroundHex = normalizeHexColor(decodedBackground)
@@ -471,7 +476,6 @@ public struct WidgetStyleSettings: Codable, Hashable, Sendable {
       backgroundHexColor = decodedBackgroundHex
     } else {
       let decodedStyle = (try? container.decodeIfPresent(WidgetBackgroundStyle.self, forKey: .backgroundStyle)) ?? .system
-      let legacyShowBackground = try? container.decodeIfPresent(Bool.self, forKey: .showBackground)
       let resolvedStyle = (legacyShowBackground == false) ? WidgetBackgroundStyle.system : decodedStyle
       backgroundHexColor = resolvedStyle.defaultBackgroundHexColor
     }
@@ -482,6 +486,8 @@ public struct WidgetStyleSettings: Codable, Hashable, Sendable {
       let legacyPalette = (try? container.decodeIfPresent(WidgetRingPalette.self, forKey: .ringPalette)) ?? .traffic
       ringColors = WidgetRingColors.defaults(for: legacyPalette)
     }
+
+    useTransparentBackground = (try? container.decodeIfPresent(Bool.self, forKey: .useTransparentBackground)) ?? false
   }
 
   public func encode(to encoder: Encoder) throws {
@@ -489,9 +495,13 @@ public struct WidgetStyleSettings: Codable, Hashable, Sendable {
 
     try container.encodeIfPresent(backgroundHexColor, forKey: .backgroundHexColor)
     try container.encode(ringColors, forKey: .ringColors)
+    try container.encode(useTransparentBackground, forKey: .useTransparentBackground)
 
-    try container.encode(backgroundHexColor != nil, forKey: .showBackground)
-    try container.encode(WidgetBackgroundStyle.legacyStyle(for: backgroundHexColor), forKey: .backgroundStyle)
+    try container.encode(!useTransparentBackground && backgroundHexColor != nil, forKey: .showBackground)
+    try container.encode(
+      WidgetBackgroundStyle.legacyStyle(for: useTransparentBackground ? nil : backgroundHexColor),
+      forKey: .backgroundStyle
+    )
     try container.encode(ringColors.legacyPalette, forKey: .ringPalette)
   }
 
