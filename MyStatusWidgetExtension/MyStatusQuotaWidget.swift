@@ -174,27 +174,23 @@ private struct ProviderSmallQuotaView: View {
         )
           .frame(maxWidth: .infinity, maxHeight: .infinity)
 
-        VStack(spacing: 2) {
-          Text(compactProviderName(for: provider))
-            .font(.caption2.weight(.semibold))
+        Text(compactProviderName(for: provider))
+          .font(.caption2.weight(.semibold))
+          .lineLimit(1)
+          .minimumScaleFactor(0.75)
+          .multilineTextAlignment(.center)
+          .padding(.horizontal, 14)
+
+        if let resetText = resetSummary(for: metrics) {
+          Text(resetDisplayText(for: resetText))
+            .font(.caption2)
+            .foregroundStyle(.secondary)
             .lineLimit(1)
             .minimumScaleFactor(0.75)
-
-          Text(centerPercentSummary(for: metrics))
-            .font(.caption.weight(.semibold))
-            .monospacedDigit()
-            .lineLimit(1)
-
-          if let resetText = resetSummary(for: metrics) {
-            Text("Reset \(resetText)")
-              .font(.caption2)
-              .foregroundStyle(.secondary)
-              .lineLimit(1)
-              .minimumScaleFactor(0.75)
-          }
+            .padding(.bottom, 4)
+            .padding(.horizontal, 8)
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
         }
-        .multilineTextAlignment(.center)
-        .padding(.horizontal, 14)
       } else {
         VStack(spacing: 2) {
           Text(compactProviderName(for: provider))
@@ -455,18 +451,6 @@ private func compactProviderName(for provider: QuotaProvider) -> String {
   }
 }
 
-private func centerPercentSummary(for metrics: [UsageMetric]) -> String {
-  guard let first = metrics.first else {
-    return "--"
-  }
-
-  if metrics.count >= 2, let second = metrics.dropFirst().first {
-    return "\(percentText(for: first)) / \(percentText(for: second))"
-  }
-
-  return percentText(for: first)
-}
-
 private func resetSummary(for metrics: [UsageMetric]) -> String? {
   for metric in metrics {
     if let resetIn = metric.resetIn?.trimmingCharacters(in: .whitespacesAndNewlines), !resetIn.isEmpty {
@@ -479,6 +463,13 @@ private func resetSummary(for metrics: [UsageMetric]) -> String? {
   }
 
   return nil
+}
+
+private func resetDisplayText(for value: String) -> String {
+  if value.lowercased().hasPrefix("in ") {
+    return "Reset \(value)"
+  }
+  return "Reset in \(value)"
 }
 
 private func relativeResetSummary(until date: Date) -> String {

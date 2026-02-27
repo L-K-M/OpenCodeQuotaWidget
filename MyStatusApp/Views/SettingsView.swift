@@ -207,49 +207,24 @@ struct SettingsView: View {
         Divider()
 
         settingsRow(title: "Circle graph colors") {
-          VStack(alignment: .leading, spacing: 10) {
-            Text(WidgetRingLayer.outer.displayName)
-              .font(.caption.weight(.semibold))
-
-            ringColorPickerRow(
-              title: WidgetRingColorRole.high.displayName,
-              binding: model.widgetRingColorBinding(for: .high, layer: .outer)
-            )
-            ringColorPickerRow(
-              title: WidgetRingColorRole.medium.displayName,
-              binding: model.widgetRingColorBinding(for: .medium, layer: .outer)
-            )
-            ringColorPickerRow(
-              title: WidgetRingColorRole.low.displayName,
-              binding: model.widgetRingColorBinding(for: .low, layer: .outer)
-            )
-            ringColorPickerRow(
-              title: WidgetRingColorRole.unlimited.displayName,
-              binding: model.widgetRingColorBinding(for: .unlimited, layer: .outer)
+          HStack(alignment: .top, spacing: 24) {
+            ringColorLayerColumn(
+              layer: .outer,
+              high: model.widgetRingColorBinding(for: .high, layer: .outer),
+              medium: model.widgetRingColorBinding(for: .medium, layer: .outer),
+              low: model.widgetRingColorBinding(for: .low, layer: .outer),
+              unlimited: model.widgetRingColorBinding(for: .unlimited, layer: .outer)
             )
 
-            Divider().padding(.vertical, 2)
-
-            Text(WidgetRingLayer.inner.displayName)
-              .font(.caption.weight(.semibold))
-
-            ringColorPickerRow(
-              title: WidgetRingColorRole.high.displayName,
-              binding: model.widgetRingColorBinding(for: .high, layer: .inner)
-            )
-            ringColorPickerRow(
-              title: WidgetRingColorRole.medium.displayName,
-              binding: model.widgetRingColorBinding(for: .medium, layer: .inner)
-            )
-            ringColorPickerRow(
-              title: WidgetRingColorRole.low.displayName,
-              binding: model.widgetRingColorBinding(for: .low, layer: .inner)
-            )
-            ringColorPickerRow(
-              title: WidgetRingColorRole.unlimited.displayName,
-              binding: model.widgetRingColorBinding(for: .unlimited, layer: .inner)
+            ringColorLayerColumn(
+              layer: .inner,
+              high: model.widgetRingColorBinding(for: .high, layer: .inner),
+              medium: model.widgetRingColorBinding(for: .medium, layer: .inner),
+              low: model.widgetRingColorBinding(for: .low, layer: .inner),
+              unlimited: model.widgetRingColorBinding(for: .unlimited, layer: .inner)
             )
           }
+          .frame(maxWidth: 520, alignment: .leading)
         }
       }
 
@@ -424,49 +399,24 @@ struct SettingsView: View {
           Divider()
 
           settingsRow(title: "Circle graph colors") {
-            VStack(alignment: .leading, spacing: 10) {
-              Text(WidgetRingLayer.outer.displayName)
-                .font(.caption.weight(.semibold))
-
-              ringColorPickerRow(
-                title: WidgetRingColorRole.high.displayName,
-                binding: model.providerRingColorBinding(for: provider, role: .high, layer: .outer)
-              )
-              ringColorPickerRow(
-                title: WidgetRingColorRole.medium.displayName,
-                binding: model.providerRingColorBinding(for: provider, role: .medium, layer: .outer)
-              )
-              ringColorPickerRow(
-                title: WidgetRingColorRole.low.displayName,
-                binding: model.providerRingColorBinding(for: provider, role: .low, layer: .outer)
-              )
-              ringColorPickerRow(
-                title: WidgetRingColorRole.unlimited.displayName,
-                binding: model.providerRingColorBinding(for: provider, role: .unlimited, layer: .outer)
+            HStack(alignment: .top, spacing: 24) {
+              ringColorLayerColumn(
+                layer: .outer,
+                high: model.providerRingColorBinding(for: provider, role: .high, layer: .outer),
+                medium: model.providerRingColorBinding(for: provider, role: .medium, layer: .outer),
+                low: model.providerRingColorBinding(for: provider, role: .low, layer: .outer),
+                unlimited: model.providerRingColorBinding(for: provider, role: .unlimited, layer: .outer)
               )
 
-              Divider().padding(.vertical, 2)
-
-              Text(WidgetRingLayer.inner.displayName)
-                .font(.caption.weight(.semibold))
-
-              ringColorPickerRow(
-                title: WidgetRingColorRole.high.displayName,
-                binding: model.providerRingColorBinding(for: provider, role: .high, layer: .inner)
-              )
-              ringColorPickerRow(
-                title: WidgetRingColorRole.medium.displayName,
-                binding: model.providerRingColorBinding(for: provider, role: .medium, layer: .inner)
-              )
-              ringColorPickerRow(
-                title: WidgetRingColorRole.low.displayName,
-                binding: model.providerRingColorBinding(for: provider, role: .low, layer: .inner)
-              )
-              ringColorPickerRow(
-                title: WidgetRingColorRole.unlimited.displayName,
-                binding: model.providerRingColorBinding(for: provider, role: .unlimited, layer: .inner)
+              ringColorLayerColumn(
+                layer: .inner,
+                high: model.providerRingColorBinding(for: provider, role: .high, layer: .inner),
+                medium: model.providerRingColorBinding(for: provider, role: .medium, layer: .inner),
+                low: model.providerRingColorBinding(for: provider, role: .low, layer: .inner),
+                unlimited: model.providerRingColorBinding(for: provider, role: .unlimited, layer: .inner)
               )
             }
+            .frame(maxWidth: 520, alignment: .leading)
           }
         }
       }
@@ -521,6 +471,25 @@ struct SettingsView: View {
         .labelsHidden()
         .frame(width: 48)
     }
+  }
+
+  private func ringColorLayerColumn(
+    layer: WidgetRingLayer,
+    high: Binding<Color>,
+    medium: Binding<Color>,
+    low: Binding<Color>,
+    unlimited: Binding<Color>
+  ) -> some View {
+    VStack(alignment: .leading, spacing: 6) {
+      Text(layer.displayName)
+        .font(.caption.weight(.semibold))
+
+      ringColorPickerRow(title: WidgetRingColorRole.high.displayName, binding: high)
+      ringColorPickerRow(title: WidgetRingColorRole.medium.displayName, binding: medium)
+      ringColorPickerRow(title: WidgetRingColorRole.low.displayName, binding: low)
+      ringColorPickerRow(title: WidgetRingColorRole.unlimited.displayName, binding: unlimited)
+    }
+    .frame(maxWidth: .infinity, alignment: .leading)
   }
 
   private func summaryPill(title: String, value: String, tint: Color) -> some View {
