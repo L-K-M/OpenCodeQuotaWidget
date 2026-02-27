@@ -13,7 +13,6 @@ struct SettingsView: View {
   private let providers = Array(QuotaProvider.allCases)
   private let refreshIntervalOptions = [15, 30, 45, 60, 90, 120, 180]
   private let settingsLabelWidth: CGFloat = 180
-  private let settingsContentMaxWidth: CGFloat = 760
 
   private var availableRefreshIntervalOptions: [Int] {
     Array(Set(refreshIntervalOptions + [model.refreshIntervalMinutes])).sorted()
@@ -120,7 +119,6 @@ struct SettingsView: View {
         generalSettingsSection
         actionsSection
       }
-      .frame(maxWidth: settingsContentMaxWidth, alignment: .leading)
       .frame(maxWidth: .infinity, alignment: .leading)
       .padding(24)
     }
@@ -193,15 +191,9 @@ struct SettingsView: View {
         Divider()
 
         settingsRow(title: "Background color") {
-          HStack(spacing: 10) {
-            ColorPicker("", selection: model.widgetBackgroundColorBinding(), supportsOpacity: true)
-              .labelsHidden()
-              .frame(width: 48)
-
-            Text("Transparent uses system background")
-              .font(.caption)
-              .foregroundStyle(.secondary)
-          }
+          ColorPicker("", selection: model.widgetBackgroundColorBinding(), supportsOpacity: true)
+            .labelsHidden()
+            .frame(width: 48)
         }
 
         Divider()
@@ -224,17 +216,8 @@ struct SettingsView: View {
               unlimited: model.widgetRingColorBinding(for: .unlimited, layer: .inner)
             )
           }
-          .frame(maxWidth: 520, alignment: .leading)
         }
       }
-
-      Text("These settings apply to all widgets unless a provider tab enables style overrides.")
-        .font(.caption)
-        .foregroundStyle(.secondary)
-
-      Text("macOS always keeps the rounded widget shape.")
-        .font(.caption)
-        .foregroundStyle(.secondary)
     }
   }
 
@@ -385,15 +368,9 @@ struct SettingsView: View {
           Divider()
 
           settingsRow(title: "Background color") {
-            HStack(spacing: 10) {
-              ColorPicker("", selection: model.providerBackgroundColorBinding(for: provider), supportsOpacity: true)
-                .labelsHidden()
-                .frame(width: 48)
-
-              Text("Transparent inherits global background")
-                .font(.caption)
-                .foregroundStyle(.secondary)
-            }
+            ColorPicker("", selection: model.providerBackgroundColorBinding(for: provider), supportsOpacity: true)
+              .labelsHidden()
+              .frame(width: 48)
           }
 
           Divider()
@@ -416,11 +393,9 @@ struct SettingsView: View {
                 unlimited: model.providerRingColorBinding(for: provider, role: .unlimited, layer: .inner)
               )
             }
-            .frame(maxWidth: 520, alignment: .leading)
           }
         }
       }
-      .frame(maxWidth: settingsContentMaxWidth, alignment: .leading)
       .frame(maxWidth: .infinity, alignment: .leading)
       .padding(24)
     }
