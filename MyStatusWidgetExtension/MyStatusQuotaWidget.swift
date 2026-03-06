@@ -204,7 +204,7 @@ private struct ProviderSmallQuotaView: View {
             .multilineTextAlignment(.center)
             .padding(.horizontal, 8)
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
-            .offset(y: -4)
+            .offset(y: -21)
         } else {
           Text(compactProviderName(for: provider))
             .font(.caption2.weight(.semibold))

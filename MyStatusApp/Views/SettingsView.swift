@@ -3,12 +3,13 @@ import QuotaCore
 
 struct SettingsView: View {
   private enum SettingsTab: Hashable {
-    case general
+    case access
+    case settings
     case provider(QuotaProvider)
   }
 
   @ObservedObject var model: AppModel
-  @State private var selectedTab: SettingsTab = .general
+  @State private var selectedTab: SettingsTab = .access
 
   private let providers = Array(QuotaProvider.allCases)
   private let refreshIntervalOptions = [15, 30, 45, 60, 90, 120, 180]
@@ -35,7 +36,8 @@ struct SettingsView: View {
 
       ScrollView(.horizontal, showsIndicators: false) {
         HStack(spacing: 0) {
-          tabButton(for: .general, title: "General")
+          tabButton(for: .access, title: "Access")
+          tabButton(for: .settings, title: "Settings")
 
           ForEach(providers, id: \.rawValue) { (provider: QuotaProvider) in
             tabButton(
@@ -56,8 +58,10 @@ struct SettingsView: View {
   @ViewBuilder
   private var currentTabContent: some View {
     switch selectedTab {
-    case .general:
-      generalTab
+    case .access:
+      accessTab
+    case .settings:
+      settingsTab
     case .provider(let provider):
       providerTab(for: provider)
     }
@@ -114,12 +118,21 @@ struct SettingsView: View {
     .foregroundStyle(isSelected ? Color.primary : Color.secondary.opacity(0.92))
   }
 
-  private var generalTab: some View {
+  private var accessTab: some View {
     ScrollView {
       VStack(alignment: .leading, spacing: 28) {
         authAccessSection
-        generalSettingsSection
         actionsSection
+      }
+      .frame(maxWidth: .infinity, alignment: .leading)
+      .padding(24)
+    }
+  }
+
+  private var settingsTab: some View {
+    ScrollView {
+      VStack(alignment: .leading, spacing: 28) {
+        generalSettingsSection
       }
       .frame(maxWidth: .infinity, alignment: .leading)
       .padding(24)
