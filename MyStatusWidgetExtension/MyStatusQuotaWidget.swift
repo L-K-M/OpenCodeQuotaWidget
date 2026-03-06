@@ -217,7 +217,7 @@ private struct ProviderSmallQuotaView: View {
           let resetTimers = resetSummaries(for: metrics)
           if !resetTimers.isEmpty {
             HStack(spacing: 3) {
-              Image(systemName: "arrow.clockwise")
+              Image(systemName: "clock")
                 .font(.caption2.weight(.semibold))
               Text(resetTimers.joined(separator: " • "))
                 .monospacedDigit()

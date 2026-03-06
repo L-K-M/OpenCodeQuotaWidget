@@ -86,13 +86,103 @@ func parseJSONObject(from data: Data) throws -> [String: Any] {
 
 func parseISO8601(_ string: String?) -> Date? {
   guard let string else { return nil }
-  let formatter = ISO8601DateFormatter()
-  formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
-  if let date = formatter.date(from: string) {
+  let trimmed = string.trimmingCharacters(in: .whitespacesAndNewlines)
+  guard !trimmed.isEmpty else { return nil }
+
+  let withFractional = ISO8601DateFormatter()
+  withFractional.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+  if let date = withFractional.date(from: trimmed) {
     return date
   }
-  formatter.formatOptions = [.withInternetDateTime]
-  return formatter.date(from: string)
+
+  let standard = ISO8601DateFormatter()
+  standard.formatOptions = [.withInternetDateTime]
+  if let date = standard.date(from: trimmed) {
+    return date
+  }
+
+  let calendarDate = DateFormatter()
+  calendarDate.locale = Locale(identifier: "en_US_POSIX")
+  calendarDate.timeZone = TimeZone(secondsFromGMT: 0)
+  calendarDate.dateFormat = "yyyy-MM-dd"
+  return calendarDate.date(from: trimmed)
+}
+
+func parseDateValue(_ value: Any?) -> Date? {
+  switch value {
+  case let date as Date:
+    return date
+  case let number as NSNumber:
+    return dateFromEpochTimestamp(number.doubleValue)
+  case let string as String:
+    let trimmed = string.trimmingCharacters(in: .whitespacesAndNewlines)
+    guard !trimmed.isEmpty else { return nil }
+
+    if let parsedISO = parseISO8601(trimmed) {
+      return parsedISO
+    }
+
+    guard let numeric = parseStrictNumericString(trimmed) else {
+      return nil
+    }
+
+    return dateFromEpochTimestamp(numeric)
+  default:
+    return nil
+  }
+}
+
+func dateFromEpochTimestamp(_ timestamp: Double) -> Date? {
+  guard timestamp.isFinite else { return nil }
+
+  let magnitude = abs(timestamp)
+  let normalizedSeconds: Double
+
+  switch magnitude {
+  case 1_000_000_000_000_000_000...:
+    normalizedSeconds = timestamp / 1_000_000_000
+  case 1_000_000_000_000_000...:
+    normalizedSeconds = timestamp / 1_000_000
+  case 1_000_000_000_000...:
+    normalizedSeconds = timestamp / 1_000
+  default:
+    normalizedSeconds = timestamp
+  }
+
+  return Date(timeIntervalSince1970: normalizedSeconds)
+}
+
+private func parseStrictNumericString(_ value: String) -> Double? {
+  guard !value.isEmpty else { return nil }
+
+  var hasDecimalPoint = false
+
+  for (index, character) in value.enumerated() {
+    if character == "-" {
+      if index != 0 {
+        return nil
+      }
+      continue
+    }
+
+    if character == "." {
+      if hasDecimalPoint {
+        return nil
+      }
+      hasDecimalPoint = true
+      continue
+    }
+
+    guard character.isNumber else {
+      return nil
+    }
+  }
+
+  if value == "-" || value == "." || value == "-." {
+    return nil
+  }
+
+  return Double(value)
 }
 
 func monthEndDate(year: Int, month: Int) -> Date? {
@@ -110,4 +200,15 @@ func monthEndDate(year: Int, month: Int) -> Date? {
   var plusOne = DateComponents()
   plusOne.month = 1
   return calendar.date(byAdding: plusOne, to: startOfMonth)
+}
+
+func startOfNextMonth(from date: Date) -> Date? {
+  let calendar = Calendar(identifier: .gregorian)
+  let components = calendar.dateComponents([.year, .month], from: date)
+
+  guard let year = components.year, let month = components.month else {
+    return nil
+  }
+
+  return monthEndDate(year: year, month: month)
 }

@@ -50,6 +50,8 @@ public struct ZhipuQuotaClient: QuotaProviderClient {
       throw ProviderClientError(kind: .decoding, message: "\(provider.displayName) payload missing limits array")
     }
 
+    let providerResetAt = parseResetDate(in: dataObject)
+
     var metrics: [UsageMetric] = []
     var maxUsagePercent = 0
 
@@ -81,8 +83,7 @@ public struct ZhipuQuotaClient: QuotaProviderClient {
       let usedDisplay = usingMillions ? formatTokensMillions(resolvedUsed) : formatIntLike(resolvedUsed)
       let totalDisplay = usingMillions ? formatTokensMillions(resolvedTotal) : formatIntLike(resolvedTotal)
 
-      let resetTimestamp = parseNumeric(tokenLimit["nextResetTime"]) // ms
-      let resetAt = resetTimestamp.map { Date(timeIntervalSince1970: $0 / 1_000) }
+      let resetAt = parseResetDate(in: tokenLimit) ?? providerResetAt
 
       metrics.append(
         UsageMetric(
@@ -101,6 +102,7 @@ public struct ZhipuQuotaClient: QuotaProviderClient {
       let percentage = parseNumeric(timeLimit["percentage"]) ?? 0
       let remaining = percentRemaining(fromUsedPercent: percentage)
       maxUsagePercent = max(maxUsagePercent, 100 - remaining)
+      let resetAt = parseResetDate(in: timeLimit) ?? providerResetAt ?? startOfNextMonth(from: now)
 
       let used = firstNumeric(
         in: timeLimit,
@@ -117,13 +119,22 @@ public struct ZhipuQuotaClient: QuotaProviderClient {
           label: "MCP monthly quota",
           remainingPercent: remaining,
           usedDisplay: formatIntLike(used),
-          totalDisplay: formatIntLike(total)
+          totalDisplay: formatIntLike(total),
+          resetAt: resetAt,
+          resetIn: resetAt.map { formatResetCountdown(to: $0, now: now) }
         )
       )
     }
 
     if metrics.isEmpty {
-      metrics.append(UsageMetric(id: "empty", label: "No quota data available"))
+      metrics.append(
+        UsageMetric(
+          id: "empty",
+          label: "No quota data available",
+          resetAt: providerResetAt,
+          resetIn: providerResetAt.map { formatResetCountdown(to: $0, now: now) }
+        )
+      )
     }
 
     return ProviderUsage(
@@ -136,4 +147,27 @@ public struct ZhipuQuotaClient: QuotaProviderClient {
       fetchedAt: now
     )
   }
+
+  private func parseResetDate(in object: [String: Any]) -> Date? {
+    for key in Self.resetDateKeys {
+      if let date = parseDateValue(object[key]) {
+        return date
+      }
+    }
+
+    return nil
+  }
+
+  private static let resetDateKeys = [
+    "nextResetTime",
+    "next_reset_time",
+    "nextResetAt",
+    "next_reset_at",
+    "resetTime",
+    "reset_time",
+    "resetAt",
+    "reset_at",
+    "quotaResetDate",
+    "quota_reset_date"
+  ]
 }

@@ -102,6 +102,7 @@ public struct CopilotClient: QuotaProviderClient {
     }
 
     let resetAt = payload.timePeriod.month.flatMap { monthEndDate(year: payload.timePeriod.year, month: $0) }
+      ?? startOfNextMonth(from: now)
     let metric = UsageMetric(
       id: "premium",
       label: "Premium requests",
@@ -150,7 +151,7 @@ public struct CopilotClient: QuotaProviderClient {
   private func buildUsage(from payload: InternalUsageResponse, now: Date) -> ProviderUsage {
 
     var metrics: [UsageMetric] = []
-    let resetAt = parseISO8601(payload.quotaResetDate)
+    let resetAt = parseDateValue(payload.quotaResetDate) ?? startOfNextMonth(from: now)
     let resetIn = resetAt.map { formatResetCountdown(to: $0, now: now) }
 
     if let premium = payload.quotaSnapshots.premiumInteractions {
