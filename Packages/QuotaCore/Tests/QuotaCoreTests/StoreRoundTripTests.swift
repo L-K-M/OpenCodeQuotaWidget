@@ -45,6 +45,7 @@ final class StoreRoundTripTests: XCTestCase {
     XCTAssertTrue(settings.widgetVisibility.showPercentageValues)
     XCTAssertTrue(settings.widgetVisibility.showMediumProgressBars)
     XCTAssertEqual(settings.widgetVisibility.mediumProviderLimit, 6)
+    XCTAssertEqual(settings.widgetVisibility.trendHistoryDays, 7)
   }
 
   func testSettingsStoreRoundTripPersistsWidgetVisibility() throws {
@@ -64,7 +65,8 @@ final class StoreRoundTripTests: XCTestCase {
         showOverviewMetricSummary: true,
         showPercentageValues: false,
         showMediumProgressBars: false,
-        mediumProviderLimit: 4
+        mediumProviderLimit: 4,
+        trendHistoryDays: 14
       )
     )
 
@@ -79,5 +81,23 @@ final class StoreRoundTripTests: XCTestCase {
     XCTAssertFalse(loaded.widgetVisibility.showPercentageValues)
     XCTAssertFalse(loaded.widgetVisibility.showMediumProgressBars)
     XCTAssertEqual(loaded.widgetVisibility.mediumProviderLimit, 4)
+    XCTAssertEqual(loaded.widgetVisibility.trendHistoryDays, 14)
+  }
+
+  func testQuotaHistoryStoreRoundTripAndRetention() throws {
+    let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+    let fileURL = tempDir.appendingPathComponent("history.json")
+    let store = QuotaHistoryStore(fileURL: fileURL)
+
+    let dayStart = Date(timeIntervalSince1970: 1_700_000_000)
+    let oldSnapshot = QuotaSnapshot(generatedAt: dayStart, providers: [], failures: [])
+    let newSnapshot = QuotaSnapshot(generatedAt: dayStart.addingTimeInterval(3 * 86_400), providers: [], failures: [])
+
+    try store.save([oldSnapshot])
+    try store.append(newSnapshot, keepDays: 2, maxEntries: 10)
+
+    let loaded = try store.load()
+    XCTAssertEqual(loaded.count, 1)
+    XCTAssertEqual(loaded.first?.generatedAt, newSnapshot.generatedAt)
   }
 }

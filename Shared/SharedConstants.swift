@@ -6,8 +6,10 @@ enum SharedConstants {
   static let fallbackAppGroupIdentifier = appGroupSuffix
   static let appGroupIdentifier = AppGroupIdentifierResolver.current
   static let snapshotFileName = "quota-snapshot.json"
+  static let historyFileName = "quota-history.json"
   static let settingsFileName = "quota-settings.json"
   static let widgetKind = "OpenCodeQuotaWidget"
+  static let trendWidgetKind = "OpenCodeQuotaWidget.trend"
   static let openAIWidgetKind = "OpenCodeQuotaWidget.openai"
   static let zhipuWidgetKind = "OpenCodeQuotaWidget.zhipu"
   static let zaiWidgetKind = "OpenCodeQuotaWidget.zai"
@@ -16,6 +18,7 @@ enum SharedConstants {
 
   static let allWidgetKinds: [String] = [
     widgetKind,
+    trendWidgetKind,
     openAIWidgetKind,
     zhipuWidgetKind,
     zaiWidgetKind,
@@ -110,6 +113,10 @@ enum SharedPaths {
 
   static func snapshotFileURL() throws -> URL {
     try appGroupDirectory().appendingPathComponent(SharedConstants.snapshotFileName)
+  }
+
+  static func historyFileURL() throws -> URL {
+    try appGroupDirectory().appendingPathComponent(SharedConstants.historyFileName)
   }
 
   static func settingsFileURL() throws -> URL {

@@ -603,6 +603,7 @@ public struct WidgetVisibilitySettings: Codable, Hashable, Sendable {
   public var showPercentageValues: Bool
   public var showMediumProgressBars: Bool
   public var mediumProviderLimit: Int
+  public var trendHistoryDays: Int
 
   public init(
     showTimestamp: Bool = true,
@@ -611,7 +612,8 @@ public struct WidgetVisibilitySettings: Codable, Hashable, Sendable {
     showOverviewMetricSummary: Bool = true,
     showPercentageValues: Bool = true,
     showMediumProgressBars: Bool = true,
-    mediumProviderLimit: Int = 6
+    mediumProviderLimit: Int = 6,
+    trendHistoryDays: Int = 7
   ) {
     self.showTimestamp = showTimestamp
     self.showFailureCount = showFailureCount
@@ -620,6 +622,7 @@ public struct WidgetVisibilitySettings: Codable, Hashable, Sendable {
     self.showPercentageValues = showPercentageValues
     self.showMediumProgressBars = showMediumProgressBars
     self.mediumProviderLimit = Self.clampMediumProviderLimit(mediumProviderLimit)
+    self.trendHistoryDays = Self.clampTrendHistoryDays(trendHistoryDays)
   }
 
   public static var `default`: WidgetVisibilitySettings {
@@ -634,6 +637,7 @@ public struct WidgetVisibilitySettings: Codable, Hashable, Sendable {
     case showPercentageValues
     case showMediumProgressBars
     case mediumProviderLimit
+    case trendHistoryDays
   }
 
   public init(from decoder: Decoder) throws {
@@ -647,6 +651,8 @@ public struct WidgetVisibilitySettings: Codable, Hashable, Sendable {
     showMediumProgressBars = (try? container.decodeIfPresent(Bool.self, forKey: .showMediumProgressBars)) ?? true
     let decodedProviderLimit = (try? container.decodeIfPresent(Int.self, forKey: .mediumProviderLimit)) ?? 6
     mediumProviderLimit = Self.clampMediumProviderLimit(decodedProviderLimit)
+    let decodedTrendDays = (try? container.decodeIfPresent(Int.self, forKey: .trendHistoryDays)) ?? 7
+    trendHistoryDays = Self.clampTrendHistoryDays(decodedTrendDays)
   }
 
   public func encode(to encoder: Encoder) throws {
@@ -658,10 +664,15 @@ public struct WidgetVisibilitySettings: Codable, Hashable, Sendable {
     try container.encode(showPercentageValues, forKey: .showPercentageValues)
     try container.encode(showMediumProgressBars, forKey: .showMediumProgressBars)
     try container.encode(Self.clampMediumProviderLimit(mediumProviderLimit), forKey: .mediumProviderLimit)
+    try container.encode(Self.clampTrendHistoryDays(trendHistoryDays), forKey: .trendHistoryDays)
   }
 
   private static func clampMediumProviderLimit(_ value: Int) -> Int {
     max(1, min(12, value))
+  }
+
+  private static func clampTrendHistoryDays(_ value: Int) -> Int {
+    max(1, min(30, value))
   }
 }
 

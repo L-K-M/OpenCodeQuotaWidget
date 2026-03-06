@@ -247,6 +247,22 @@ struct SettingsView: View {
                 .monospacedDigit()
                 .frame(minWidth: 24, alignment: .trailing)
             }
+
+            HStack(spacing: 10) {
+              Text("Trend chart history (days)")
+              Spacer()
+              Stepper(
+                "",
+                value: model.widgetVisibilityIntBinding(for: \.trendHistoryDays, range: 1...30),
+                in: 1...30
+              )
+              .labelsHidden()
+
+              Text("\(model.widgetVisibility.trendHistoryDays)")
+                .font(.subheadline.weight(.semibold))
+                .monospacedDigit()
+                .frame(minWidth: 24, alignment: .trailing)
+            }
           }
           .toggleStyle(.switch)
         }

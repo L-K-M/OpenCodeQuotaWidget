@@ -21,27 +21,32 @@ final class AppModel: ObservableObject {
 
   private let settingsStore: SettingsStore
   private let snapshotStore: SnapshotStore
+  private let historyStore: QuotaHistoryStore
   private let refreshService: RefreshService
   private let credentialLoader: OpenCodeCredentialLoader
   private let sandboxAccess: OpenCodeSandboxAccess
   private var cachedAppGroupSettingsStore: SettingsStore?
   private var cachedAppGroupSnapshotStore: SnapshotStore?
+  private var cachedAppGroupHistoryStore: QuotaHistoryStore?
   private var autoRefreshTask: Task<Void, Never>?
 
   init() {
     let baseDirectory = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first
       ?? FileManager.default.temporaryDirectory
-    let urls: (settings: URL, snapshot: URL) = (
+    let urls: (settings: URL, snapshot: URL, history: URL) = (
       baseDirectory.appendingPathComponent(SharedConstants.settingsFileName),
-      baseDirectory.appendingPathComponent(SharedConstants.snapshotFileName)
+      baseDirectory.appendingPathComponent(SharedConstants.snapshotFileName),
+      baseDirectory.appendingPathComponent(SharedConstants.historyFileName)
     )
 
     let settingsStore = SettingsStore(fileURL: urls.settings)
     let snapshotStore = SnapshotStore(fileURL: urls.snapshot)
+    let historyStore = QuotaHistoryStore(fileURL: urls.history)
     let sandboxAccess = OpenCodeSandboxAccess()
 
     self.settingsStore = settingsStore
     self.snapshotStore = snapshotStore
+    self.historyStore = historyStore
     self.refreshService = RefreshService(
       coordinator: QuotaCoordinator.live(),
       snapshotStore: snapshotStore
@@ -130,15 +135,25 @@ final class AppModel: ObservableObject {
 
     do {
       let refreshed = try await refreshService.refresh(configurations: enabledConfigs)
+      do {
+        try historyStore.append(refreshed)
+      } catch {
+        print("[OpenCodeQuota] Local history append failed: \(error.localizedDescription)")
+      }
+
       let widgetSyncReady = syncSnapshotToWidgetStore(refreshed)
-      if widgetSyncReady {
+      let historySyncReady = syncHistoryToWidgetStore(refreshed)
+
+      if widgetSyncReady || historySyncReady {
         reloadWidgetTimelines()
       }
+
       snapshot = refreshed
-      if widgetSyncReady {
+
+      if widgetSyncReady && historySyncReady {
         statusMessage = "Refreshed \(refreshed.providers.count) provider(s), \(refreshed.failures.count) failure(s)"
       } else {
-        statusMessage = "Refreshed \(refreshed.providers.count) provider(s), \(refreshed.failures.count) failure(s). Widget sync unavailable."
+        statusMessage = "Refreshed \(refreshed.providers.count) provider(s), \(refreshed.failures.count) failure(s). Widget sync partially unavailable."
       }
     } catch {
       statusMessage = "Refresh failed: \(error.localizedDescription)"
@@ -459,7 +474,7 @@ final class AppModel: ObservableObject {
           return
         }
 
-        let intervalNanoseconds = await self.autoRefreshIntervalNanoseconds()
+        let intervalNanoseconds = self.autoRefreshIntervalNanoseconds()
         do {
           try await Task.sleep(nanoseconds: intervalNanoseconds)
         } catch {
@@ -637,19 +652,30 @@ final class AppModel: ObservableObject {
     return cachedAppGroupSnapshotStore
   }
 
+  private func appGroupHistoryStore() -> QuotaHistoryStore? {
+    resolveAppGroupStoresIfNeeded()
+    return cachedAppGroupHistoryStore
+  }
+
   private func resolveAppGroupStoresIfNeeded() {
-    guard cachedAppGroupSettingsStore == nil || cachedAppGroupSnapshotStore == nil else {
+    guard
+      cachedAppGroupSettingsStore == nil
+        || cachedAppGroupSnapshotStore == nil
+        || cachedAppGroupHistoryStore == nil
+    else {
       return
     }
 
     do {
       let settingsURL = try SharedPaths.settingsFileURL()
       let snapshotURL = try SharedPaths.snapshotFileURL()
+      let historyURL = try SharedPaths.historyFileURL()
       cachedAppGroupSettingsStore = SettingsStore(fileURL: settingsURL)
       cachedAppGroupSnapshotStore = SnapshotStore(
         fileURL: snapshotURL,
         appGroupIdentifier: SharedConstants.appGroupIdentifier
       )
+      cachedAppGroupHistoryStore = QuotaHistoryStore(fileURL: historyURL)
       print("[OpenCodeQuota] App Group container resolved: \(snapshotURL.deletingLastPathComponent().path)")
     } catch {
       print("[OpenCodeQuota] Failed to resolve App Group container: \(error.localizedDescription)")
@@ -660,6 +686,28 @@ final class AppModel: ObservableObject {
   private func invalidateAppGroupStores() {
     cachedAppGroupSettingsStore = nil
     cachedAppGroupSnapshotStore = nil
+    cachedAppGroupHistoryStore = nil
+  }
+
+  @discardableResult
+  private func syncHistoryToWidgetStore(_ snapshot: QuotaSnapshot) -> Bool {
+    for attempt in 1...2 {
+      guard let appGroupStore = appGroupHistoryStore() else {
+        print("[OpenCodeQuota] History sync failed: no App Group history store available")
+        invalidateAppGroupStores()
+        continue
+      }
+
+      do {
+        try appGroupStore.append(snapshot)
+        return true
+      } catch {
+        print("[OpenCodeQuota] History sync attempt \(attempt) failed: \(error.localizedDescription)")
+        invalidateAppGroupStores()
+      }
+    }
+
+    return false
   }
 
   private func reloadWidgetTimelines() {

@@ -5,6 +5,7 @@ import SwiftUI
 struct OpenCodeQuotaWidgetBundle: WidgetBundle {
   var body: some Widget {
     OpenCodeQuotaWidget()
+    QuotaTrendChartWidget()
     OpenAIQuotaWidget()
     ZhipuQuotaWidget()
     ZAIQuotaWidget()
