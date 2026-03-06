@@ -8,9 +8,7 @@ struct OpenCodeQuotaWidget: Widget {
   var body: some WidgetConfiguration {
     StaticConfiguration(kind: kind, provider: QuotaTimelineProvider()) { entry in
       DashboardWidgetRootView(entry: entry)
-        .containerBackground(for: .widget) {
-          widgetBackground(for: entry, provider: nil)
-        }
+        .quotaWidgetBackground(entry: entry, provider: nil)
     }
     .configurationDisplayName("OpenCodeQuota Dashboard")
     .description("Compact quota overview across all enabled providers.")
@@ -81,13 +79,26 @@ private func providerWidgetConfiguration(
 ) -> some WidgetConfiguration {
   StaticConfiguration(kind: kind, provider: QuotaTimelineProvider()) { entry in
     ProviderSmallQuotaView(entry: entry, provider: provider)
-      .containerBackground(for: .widget) {
-        widgetBackground(for: entry, provider: provider)
-      }
+      .quotaWidgetBackground(entry: entry, provider: provider)
   }
   .configurationDisplayName(displayName)
   .description(widgetDescription)
   .supportedFamilies([.systemSmall])
+}
+
+private extension View {
+  @ViewBuilder
+  func quotaWidgetBackground(entry: QuotaEntry, provider: QuotaProvider?) -> some View {
+    let style = entry.style(for: provider)
+
+    if style.useTransparentBackground {
+      self.containerBackground(.clear, for: .widget)
+    } else {
+      self.containerBackground(for: .widget) {
+        FancyWidgetBackground(baseColor: backgroundBaseColor(from: style.backgroundHexColor))
+      }
+    }
+  }
 }
 
 private struct DashboardWidgetRootView: View {
@@ -202,15 +213,23 @@ private struct ProviderSmallQuotaView: View {
             .padding(.horizontal, 14)
         }
 
-        if entry.settings.widgetVisibility.showResetInfo, let resetText = resetSummary(for: metrics) {
-          Text(resetDisplayText(for: resetText))
+        if entry.settings.widgetVisibility.showResetInfo {
+          let resetTimers = resetSummaries(for: metrics)
+          if !resetTimers.isEmpty {
+            HStack(spacing: 3) {
+              Image(systemName: "arrow.clockwise")
+                .font(.caption2.weight(.semibold))
+              Text(resetTimers.joined(separator: " • "))
+                .monospacedDigit()
+            }
             .font(.caption2)
             .foregroundStyle(.secondary)
             .lineLimit(1)
-            .minimumScaleFactor(0.75)
+            .minimumScaleFactor(0.72)
             .padding(.horizontal, 8)
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
             .offset(y: 22)
+          }
         }
       } else {
         VStack(spacing: 2) {
@@ -494,25 +513,43 @@ private func compactProviderName(for provider: QuotaProvider) -> String {
   }
 }
 
-private func resetSummary(for metrics: [UsageMetric]) -> String? {
-  for metric in metrics {
+private func resetSummaries(for metrics: [UsageMetric]) -> [String] {
+  metrics.compactMap { metric in
     if let resetIn = metric.resetIn?.trimmingCharacters(in: .whitespacesAndNewlines), !resetIn.isEmpty {
-      return resetIn
+      let normalized = normalizedResetSummary(resetIn)
+      return normalized.isEmpty ? nil : normalized
     }
 
     if let resetAt = metric.resetAt {
-      return relativeResetSummary(until: resetAt)
+      let relative = relativeResetSummary(until: resetAt)
+      return relative.isEmpty ? nil : relative
     }
-  }
 
-  return nil
+    return nil
+  }
 }
 
-private func resetDisplayText(for value: String) -> String {
-  if value.lowercased().hasPrefix("in ") {
-    return "Reset \(value)"
+private func normalizedResetSummary(_ rawValue: String) -> String {
+  let value = rawValue.trimmingCharacters(in: .whitespacesAndNewlines)
+  let lowercased = value.lowercased()
+
+  if lowercased == "reset" {
+    return "<1m"
   }
-  return "Reset in \(value)"
+
+  if lowercased.hasPrefix("reset in ") {
+    return String(value.dropFirst(9)).trimmingCharacters(in: .whitespacesAndNewlines)
+  }
+
+  if lowercased.hasPrefix("in ") {
+    return String(value.dropFirst(3)).trimmingCharacters(in: .whitespacesAndNewlines)
+  }
+
+  if lowercased.hasPrefix("reset ") {
+    return String(value.dropFirst(6)).trimmingCharacters(in: .whitespacesAndNewlines)
+  }
+
+  return value
 }
 
 private func relativeResetSummary(until date: Date) -> String {
@@ -546,16 +583,6 @@ private func percentText(for metric: UsageMetric?) -> String {
     return "\(remaining)%"
   }
   return "--"
-}
-
-@ViewBuilder
-private func widgetBackground(for entry: QuotaEntry, provider: QuotaProvider?) -> some View {
-  let style = entry.style(for: provider)
-  if style.useTransparentBackground {
-    Color.clear
-  } else {
-    FancyWidgetBackground(baseColor: backgroundBaseColor(from: style.backgroundHexColor))
-  }
 }
 
 private func backgroundBaseColor(from hexColor: String?) -> Color? {

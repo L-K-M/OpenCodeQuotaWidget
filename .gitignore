@@ -4,6 +4,7 @@ build/
 *.xcworkspace/xcuserdata/
 *.xcodeproj/xcuserdata/
 *.xcuserstate
+*.build
 
 # macOS
 .DS_Store

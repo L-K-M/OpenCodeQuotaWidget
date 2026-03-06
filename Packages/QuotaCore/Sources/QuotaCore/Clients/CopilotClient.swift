@@ -166,7 +166,14 @@ public struct CopilotClient: QuotaProviderClient {
     }
 
     if metrics.isEmpty {
-      metrics.append(UsageMetric(id: "empty", label: "No quota data available"))
+      metrics.append(
+        UsageMetric(
+          id: "empty",
+          label: "No quota data available",
+          resetAt: resetAt,
+          resetIn: resetIn
+        )
+      )
     }
 
     let maxUsage = metrics
@@ -217,7 +224,13 @@ public struct CopilotClient: QuotaProviderClient {
     resetIn: String?
   ) -> UsageMetric {
     if quota.unlimited {
-      return UsageMetric(id: id, label: label, isUnlimited: true)
+      return UsageMetric(
+        id: id,
+        label: label,
+        resetAt: resetAt,
+        resetIn: resetIn,
+        isUnlimited: true
+      )
     }
 
     let remainingPercent = clampPercent(Int(quota.percentRemaining.rounded()))
