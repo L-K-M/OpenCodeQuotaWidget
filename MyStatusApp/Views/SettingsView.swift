@@ -85,7 +85,9 @@ struct SettingsView: View {
       }
       .frame(width: 110, alignment: .center)
       .padding(.horizontal, 14)
-      .padding(.vertical, 7)
+      .padding(.vertical, 9)
+      .frame(minHeight: 36)
+      .contentShape(Rectangle())
       .background {
         if isSelected {
           TopTabFillShape(cornerRadius: 9)
