@@ -217,12 +217,8 @@ private struct ProviderSmallQuotaView: View {
         if entry.settings.widgetVisibility.showResetInfo {
           let resetTimers = resetSummaries(for: metrics)
           if !resetTimers.isEmpty {
-            HStack(spacing: 3) {
-              Image(systemName: "clock")
-                .font(.caption2.weight(.semibold))
-              Text(resetTimers.joined(separator: " • "))
-                .monospacedDigit()
-            }
+            Text(resetTimers.joined(separator: " • "))
+              .monospacedDigit()
             .font(.caption2)
             .foregroundStyle(.secondary)
             .lineLimit(1)
