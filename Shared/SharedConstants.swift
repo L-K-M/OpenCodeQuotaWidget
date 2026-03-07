@@ -9,7 +9,7 @@ enum SharedConstants {
   static let historyFileName = "quota-history.json"
   static let settingsFileName = "quota-settings.json"
   static let widgetKind = "OpenCodeQuotaWidget"
-  static let trendWidgetKind = "OpenCodeQuotaWidget.trend"
+  static let trendWidgetKind = "ch.lkmc.opencodequota.widget.trend"
   static let openAIWidgetKind = "OpenCodeQuotaWidget.openai"
   static let zhipuWidgetKind = "OpenCodeQuotaWidget.zhipu"
   static let zaiWidgetKind = "OpenCodeQuotaWidget.zai"

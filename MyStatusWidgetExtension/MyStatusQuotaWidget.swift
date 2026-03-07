@@ -24,8 +24,8 @@ struct QuotaTrendChartWidget: Widget {
       TrendLineChartWidgetView(entry: entry)
         .quotaWidgetBackground(entry: entry, provider: nil)
     }
-    .configurationDisplayName("Quota Trend")
-    .description("Quota history lines across providers and limits.")
+    .configurationDisplayName("Quota Trend Chart")
+    .description("History lines across all providers and limits.")
     .supportedFamilies([.systemSmall, .systemMedium])
   }
 }
@@ -145,6 +145,7 @@ private struct TrendLineChartWidgetView: View {
           .font(.caption2.weight(.semibold))
           .foregroundStyle(.secondary)
       }
+      .padding(.top, 5)
 
       if chartData.series.isEmpty {
         Spacer(minLength: 0)
@@ -161,8 +162,6 @@ private struct TrendLineChartWidgetView: View {
           endDate: chartData.endDate
         )
         .frame(maxWidth: .infinity, minHeight: 72, maxHeight: .infinity)
-
-        TrendLegendView(series: chartData.series)
 
         if let warning = chartData.warnings.first {
           Text("Risk: \(warning.message)")
@@ -238,37 +237,6 @@ private struct TrendChartPlotView: View {
   private func yPosition(for remainingPercent: Double, height: CGFloat) -> CGFloat {
     let clamped = min(max(remainingPercent, 0), 100)
     return (1 - CGFloat(clamped / 100)) * height
-  }
-}
-
-private struct TrendLegendView: View {
-  let series: [TrendSeries]
-
-  var body: some View {
-    let maxLegendItems = 4
-    let visible = Array(series.prefix(maxLegendItems))
-    let remaining = max(0, series.count - visible.count)
-
-    VStack(alignment: .leading, spacing: 2) {
-      ForEach(visible) { line in
-        HStack(spacing: 4) {
-          Circle()
-            .fill(line.color)
-            .frame(width: 5, height: 5)
-
-          Text(line.displayLabel)
-            .font(.caption2)
-            .foregroundStyle(.secondary)
-            .lineLimit(1)
-        }
-      }
-
-      if remaining > 0 {
-        Text("+\(remaining) more")
-          .font(.caption2)
-          .foregroundStyle(.secondary)
-      }
-    }
   }
 }
 

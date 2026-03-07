@@ -299,7 +299,7 @@
 				CODE_SIGN_ENTITLEMENTS = MyStatusWidgetExtension/MyStatusWidgetExtension.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 2;
 				DEVELOPMENT_TEAM = 293A48LC7B;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = MyStatusWidgetExtension/Info.plist;
@@ -309,7 +309,7 @@
 					"@executable_path/../../../../Frameworks",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 14.0;
-				MARKETING_VERSION = 0.1.0;
+				MARKETING_VERSION = 0.1.1;
 				PRODUCT_BUNDLE_IDENTIFIER = ch.lkmc.opencodequota.app.widgetextension;
 				PRODUCT_NAME = OpenCodeQuotaWidgetExtension;
 				SDKROOT = macosx;
@@ -325,7 +325,7 @@
 				CODE_SIGN_ENTITLEMENTS = MyStatusApp/MyStatusApp.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 2;
 				DEVELOPMENT_TEAM = 293A48LC7B;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = MyStatusApp/Info.plist;
@@ -334,7 +334,7 @@
 					"@executable_path/../Frameworks",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 14.0;
-				MARKETING_VERSION = 0.1.0;
+				MARKETING_VERSION = 0.1.1;
 				PRODUCT_BUNDLE_IDENTIFIER = ch.lkmc.opencodequota.app;
 				PRODUCT_NAME = OpenCodeQuota;
 				SDKROOT = macosx;
@@ -405,7 +405,7 @@
 				CODE_SIGN_ENTITLEMENTS = MyStatusWidgetExtension/MyStatusWidgetExtension.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 2;
 				DEVELOPMENT_TEAM = 293A48LC7B;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = MyStatusWidgetExtension/Info.plist;
@@ -415,7 +415,7 @@
 					"@executable_path/../../../../Frameworks",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 14.0;
-				MARKETING_VERSION = 0.1.0;
+				MARKETING_VERSION = 0.1.1;
 				PRODUCT_BUNDLE_IDENTIFIER = ch.lkmc.opencodequota.app.widgetextension;
 				PRODUCT_NAME = OpenCodeQuotaWidgetExtension;
 				SDKROOT = macosx;
@@ -494,7 +494,7 @@
 				CODE_SIGN_ENTITLEMENTS = MyStatusApp/MyStatusApp.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 2;
 				DEVELOPMENT_TEAM = 293A48LC7B;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = MyStatusApp/Info.plist;
@@ -503,7 +503,7 @@
 					"@executable_path/../Frameworks",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 14.0;
-				MARKETING_VERSION = 0.1.0;
+				MARKETING_VERSION = 0.1.1;
 				PRODUCT_BUNDLE_IDENTIFIER = ch.lkmc.opencodequota.app;
 				PRODUCT_NAME = OpenCodeQuota;
 				SDKROOT = macosx;
