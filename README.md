@@ -39,3 +39,5 @@ Or run:
 5. App Group identifier uses your signing team prefix: `$(TeamIdentifierPrefix)group.ch.lkmc.opencodequota` (must match both entitlements files and runtime resolution in `Shared/SharedConstants.swift`).
 6. Run the `OpenCodeQuotaApp` target once, confirm OpenCode credentials are detected, then add the widget.
 7. If config files show sandbox permission errors, click `Grant File Access` and select your OpenCode's auth JSON file once.
+
+Widgets refresh from provider APIs on their own timeline, so quota updates continue even when the host app window is closed.

@@ -10,14 +10,23 @@ final class OpenCodeSandboxAccess {
   }
 
   private let defaults: UserDefaults
+  private let legacyDefaults: UserDefaults?
 
   private struct ResolvedAccess {
     let url: URL
     let requiresSecurityScope: Bool
   }
 
-  init(defaults: UserDefaults = .standard) {
-    self.defaults = defaults
+  init(defaults: UserDefaults? = nil, legacyDefaults: UserDefaults = .standard) {
+    if let defaults {
+      self.defaults = defaults
+    } else if let sharedDefaults = OpenCodeSandboxAccess.sharedDefaults() {
+      self.defaults = sharedDefaults
+    } else {
+      self.defaults = .standard
+    }
+
+    self.legacyDefaults = (self.defaults === legacyDefaults) ? nil : legacyDefaults
   }
 
   func saveBookmark(for key: BookmarkKey, url: URL) throws {
@@ -27,8 +36,8 @@ final class OpenCodeSandboxAccess {
       relativeTo: nil
     )
     let pathKey = bookmarkPathKey(for: key)
-    defaults.set(data, forKey: key.rawValue)
-    defaults.set(url.path, forKey: pathKey)
+    write(data, forKey: key.rawValue)
+    write(url.path, forKey: pathKey)
   }
 
   func resolveURL(for key: BookmarkKey) -> URL? {
@@ -43,7 +52,7 @@ final class OpenCodeSandboxAccess {
   }
 
   func resolveBookmarkedURL(for key: BookmarkKey) -> URL? {
-    guard let data = defaults.data(forKey: key.rawValue) else {
+    guard let data = readData(forKey: key.rawValue) else {
       return nil
     }
 
@@ -54,12 +63,12 @@ final class OpenCodeSandboxAccess {
       relativeTo: nil,
       bookmarkDataIsStale: &stale
     ) else {
-      defaults.removeObject(forKey: key.rawValue)
+      remove(forKey: key.rawValue)
       return nil
     }
 
     guard isAllowedFallbackPath(url.path, for: key) else {
-      defaults.removeObject(forKey: key.rawValue)
+      remove(forKey: key.rawValue)
       return nil
     }
 
@@ -72,13 +81,13 @@ final class OpenCodeSandboxAccess {
 
   private func resolveAccess(for key: BookmarkKey) -> ResolvedAccess? {
     let pathKey = bookmarkPathKey(for: key)
-    let storedPath = defaults.string(forKey: pathKey)
+    let storedPath = readString(forKey: pathKey)
     let fallbackPath: String
     if let storedPath, isAllowedFallbackPath(storedPath, for: key) {
       fallbackPath = storedPath
     } else {
       fallbackPath = inferredFallbackPath(for: key)
-      defaults.set(fallbackPath, forKey: pathKey)
+      write(fallbackPath, forKey: pathKey)
     }
 
     return ResolvedAccess(url: URL(fileURLWithPath: fallbackPath), requiresSecurityScope: false)
@@ -86,6 +95,54 @@ final class OpenCodeSandboxAccess {
 
   private func bookmarkPathKey(for key: BookmarkKey) -> String {
     "\(key.rawValue).path"
+  }
+
+  private func readData(forKey key: String) -> Data? {
+    if let value = defaults.data(forKey: key) {
+      return value
+    }
+
+    guard let legacyDefaults else {
+      return nil
+    }
+
+    guard let value = legacyDefaults.data(forKey: key) else {
+      return nil
+    }
+
+    defaults.set(value, forKey: key)
+    return value
+  }
+
+  private func readString(forKey key: String) -> String? {
+    if let value = defaults.string(forKey: key) {
+      return value
+    }
+
+    guard let legacyDefaults else {
+      return nil
+    }
+
+    guard let value = legacyDefaults.string(forKey: key) else {
+      return nil
+    }
+
+    defaults.set(value, forKey: key)
+    return value
+  }
+
+  private func write(_ value: Any, forKey key: String) {
+    defaults.set(value, forKey: key)
+    legacyDefaults?.set(value, forKey: key)
+  }
+
+  private func remove(forKey key: String) {
+    defaults.removeObject(forKey: key)
+    legacyDefaults?.removeObject(forKey: key)
+  }
+
+  private static func sharedDefaults() -> UserDefaults? {
+    UserDefaults(suiteName: SharedConstants.appGroupIdentifier)
   }
 
   private func isAllowedFallbackPath(_ path: String, for key: BookmarkKey) -> Bool {

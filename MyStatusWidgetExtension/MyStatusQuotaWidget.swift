@@ -151,7 +151,7 @@ private struct TrendLineChartWidgetView: View {
         Spacer(minLength: 0)
         Text("No history yet")
           .font(.caption.weight(.semibold))
-        Text("Refresh in app to collect trend data")
+        Text("Waiting for automatic refresh")
           .font(.caption2)
           .foregroundStyle(.secondary)
         Spacer(minLength: 0)
@@ -389,7 +389,7 @@ private struct ProviderSmallQuotaView: View {
           Text("No data yet")
             .font(.caption2)
             .foregroundStyle(.secondary)
-          Text("Refresh in app")
+          Text("Waiting for refresh")
             .font(.caption2)
             .foregroundStyle(.secondary)
         }
