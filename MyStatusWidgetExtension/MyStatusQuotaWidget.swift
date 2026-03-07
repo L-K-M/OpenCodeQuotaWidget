@@ -26,7 +26,7 @@ struct QuotaTrendChartWidget: Widget {
     }
     .configurationDisplayName("Quota Trend")
     .description("Quota history lines across providers and limits.")
-    .supportedFamilies([.systemMedium])
+    .supportedFamilies([.systemSmall, .systemMedium])
   }
 }
 
