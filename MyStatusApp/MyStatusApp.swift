@@ -42,12 +42,14 @@ struct OpenCodeQuotaApp: App {
     MenuBarExtra {
       MenuBarContent(model: model)
     } label: {
-      MenuBarIcon(snapshot: model.snapshot, widgetStyle: model.widgetStyle, providerStyleSettings: model.providerStyleSettings)
+      MenuBarIcon(
+        snapshot: model.snapshot,
+        widgetStyle: model.widgetStyle,
+        providerStyleSettings: model.providerStyleSettings
+      )
     }
   }
 }
-
-// MARK: - Menu Bar Icon
 
 private struct MenuBarIcon: View {
   let snapshot: QuotaSnapshot?
@@ -55,33 +57,36 @@ private struct MenuBarIcon: View {
   let providerStyleSettings: [QuotaProvider: ProviderStyleSettings]
 
   var body: some View {
-    Image(nsImage: renderBarGraphIcon())
+    Image(nsImage: iconImage())
+      .accessibilityLabel("OpenCode Quota")
   }
 
-  private func renderBarGraphIcon() -> NSImage {
+  private func iconImage() -> NSImage {
     let barWidth: CGFloat = 3
     let barSpacing: CGFloat = 1.5
-    let height: CGFloat = 16
+    let iconHeight: CGFloat = 16
     let cornerRadius: CGFloat = 1
 
-    guard let snapshot, !snapshot.providers.isEmpty else {
+    let providers = orderedProviders()
+    guard !providers.isEmpty else {
       return fallbackIcon()
     }
 
-    let providers = snapshot.providers
     let totalWidth = CGFloat(providers.count) * barWidth + CGFloat(max(0, providers.count - 1)) * barSpacing
 
-    let image = NSImage(size: NSSize(width: totalWidth, height: height), flipped: false) { rect in
+    let image = NSImage(size: NSSize(width: totalWidth, height: iconHeight), flipped: false) { _ in
       for (index, provider) in providers.enumerated() {
         let x = CGFloat(index) * (barWidth + barSpacing)
-        let percent = CGFloat(max(0, min(100, provider.maxUsagePercent.map { 100 - $0 } ?? 100))) / 100.0
-        let barHeight = max(2, percent * height)
+        let remaining = MenuBarQuotaStyling.remainingPercent(for: provider) ?? 0
+        let normalized = CGFloat(max(0, min(100, remaining))) / 100.0
+        let barHeight = max(2, normalized * iconHeight)
 
         let barRect = NSRect(x: x, y: 0, width: barWidth, height: barHeight)
         let barPath = NSBezierPath(roundedRect: barRect, xRadius: cornerRadius, yRadius: cornerRadius)
 
-        let color = self.barColor(for: provider)
-        color.setFill()
+        MenuBarQuotaStyling
+          .color(for: provider, globalStyle: widgetStyle, providerStyleSettings: providerStyleSettings)
+          .setFill()
         barPath.fill()
       }
       return true
@@ -91,72 +96,78 @@ private struct MenuBarIcon: View {
     return image
   }
 
+  private func orderedProviders() -> [ProviderUsage] {
+    guard let snapshot else {
+      return []
+    }
+
+    return QuotaProvider.allCases.compactMap { provider in
+      snapshot.providers.first(where: { $0.provider == provider })
+    }
+  }
+
   private func fallbackIcon() -> NSImage {
     let image = NSImage(systemSymbolName: "chart.bar.fill", accessibilityDescription: "OpenCode Quota")
       ?? NSImage(size: NSSize(width: 18, height: 16))
     image.isTemplate = true
     return image
   }
-
-  private func barColor(for provider: ProviderUsage) -> NSColor {
-    let style = effectiveStyle(for: provider.provider)
-    let ringColors = style.ringColors
-    let remaining = provider.metrics.first?.remainingPercent ?? 100
-    let hex: String
-    if remaining >= 70 {
-      hex = ringColors.outerHighHexColor
-    } else if remaining >= 40 {
-      hex = ringColors.outerMediumHexColor
-    } else {
-      hex = ringColors.outerLowHexColor
-    }
-    return NSColor(hexString: hex) ?? .white
-  }
-
-  private func effectiveStyle(for provider: QuotaProvider) -> WidgetStyleSettings {
-    if let override = providerStyleSettings[provider], override.useCustomStyle {
-      return WidgetStyleSettings(
-        backgroundHexColor: override.style.backgroundHexColor ?? widgetStyle.backgroundHexColor,
-        ringColors: override.style.ringColors,
-        useTransparentBackground: override.style.useTransparentBackground
-      )
-    }
-    return widgetStyle
-  }
 }
-
-// MARK: - Menu Bar Content
 
 private struct MenuBarContent: View {
   @Environment(\.openWindow) private var openWindow
   @ObservedObject var model: AppModel
 
+  private static let relativeTimeFormatter: RelativeDateTimeFormatter = {
+    let formatter = RelativeDateTimeFormatter()
+    formatter.unitsStyle = .abbreviated
+    return formatter
+  }()
+
   var body: some View {
     if let snapshot = model.snapshot, !snapshot.providers.isEmpty {
-      ForEach(snapshot.providers, id: \.provider) { provider in
-        MenuBarProviderSection(
-          provider: provider,
-          widgetStyle: model.widgetStyle,
-          providerStyleSettings: model.providerStyleSettings
-        )
+      let providers = providersForMenu(from: snapshot)
+
+      ForEach(providers, id: \.provider) { provider in
+        Section {
+          ForEach(provider.metrics) { metric in
+            Text(primaryLine(for: metric))
+
+            if let secondary = secondaryLine(for: metric) {
+              Text(secondary)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+            }
+          }
+
+          if let warning = provider.warning, !warning.isEmpty {
+            Text("Warning: \(warning)")
+              .font(.caption)
+              .foregroundStyle(.orange)
+          }
+        } header: {
+          Text(providerHeader(for: provider))
+        }
       }
 
       if !snapshot.failures.isEmpty {
         Divider()
-        ForEach(snapshot.failures, id: \.provider) { failure in
+        ForEach(snapshot.failures.sorted(by: { $0.provider.displayName < $1.provider.displayName }), id: \.provider) { failure in
           Text("\(failure.provider.displayName): \(failure.message)")
             .font(.caption)
         }
       }
 
-      if let generatedAt = formattedTimestamp(snapshot.generatedAt) {
-        Divider()
-        Text("Updated \(generatedAt)")
-          .font(.caption)
-      }
+      Divider()
+      Text("Updated \(relativeTimeString(from: snapshot.generatedAt))")
+        .font(.caption)
+        .foregroundStyle(.secondary)
     } else {
       Text("No quota data yet")
         .font(.caption)
+      Text("Use Refresh Now to fetch quotas")
+        .font(.caption2)
+        .foregroundStyle(.secondary)
     }
 
     Divider()
@@ -187,101 +198,158 @@ private struct MenuBarContent: View {
     .keyboardShortcut("q", modifiers: .command)
   }
 
-  private func formattedTimestamp(_ date: Date) -> String? {
-    let formatter = RelativeDateTimeFormatter()
-    formatter.unitsStyle = .abbreviated
-    return formatter.localizedString(for: date, relativeTo: Date())
-  }
-}
+  private func providersForMenu(from snapshot: QuotaSnapshot) -> [ProviderUsage] {
+    snapshot.providers.sorted { lhs, rhs in
+      let lhsRemaining = MenuBarQuotaStyling.remainingPercent(for: lhs) ?? Int.max
+      let rhsRemaining = MenuBarQuotaStyling.remainingPercent(for: rhs) ?? Int.max
 
-// MARK: - Provider Section in Menu
-
-private struct MenuBarProviderSection: View {
-  let provider: ProviderUsage
-  let widgetStyle: WidgetStyleSettings
-  let providerStyleSettings: [QuotaProvider: ProviderStyleSettings]
-
-  var body: some View {
-    Section {
-      ForEach(provider.metrics) { metric in
-        menuItem(for: metric)
+      if lhsRemaining != rhsRemaining {
+        return lhsRemaining < rhsRemaining
       }
-    } header: {
-      HStack(spacing: 4) {
-        Circle()
-          .fill(Color(nsColor: headerColor()))
-          .frame(width: 6, height: 6)
-        Text(providerTitle)
-      }
+
+      return lhs.provider.displayName < rhs.provider.displayName
     }
   }
 
-  private var providerTitle: String {
+  private func providerHeader(for provider: ProviderUsage) -> String {
+    var title = provider.title
+
     if let subtitle = provider.subtitle, !subtitle.isEmpty {
-      return "\(provider.title) (\(subtitle))"
-    }
-    return provider.title
-  }
-
-  private func menuItem(for metric: UsageMetric) -> some View {
-    let remaining = metric.remainingPercent
-    let barText: String
-    if metric.isUnlimited {
-      barText = "\(metric.label): Unlimited"
-    } else if let pct = remaining {
-      let usagePart = metric.usageLine ?? "\(pct)% left"
-      barText = "\(metric.label): \(usagePart)"
-    } else {
-      barText = metric.label
+      title += " (\(subtitle))"
     }
 
-    let resetPart: String? = metric.resetIn
-
-    return VStack(alignment: .leading, spacing: 0) {
-      Text(barText)
-      if let resetPart {
-        Text("Resets in \(resetPart)")
-          .font(.caption)
-          .foregroundStyle(.secondary)
+    if provider.metrics.contains(where: { !$0.isUnlimited }) {
+      if let remaining = MenuBarQuotaStyling.remainingPercent(for: provider) {
+        title += " - \(remaining)% left"
       }
+    } else if provider.metrics.contains(where: \.isUnlimited) {
+      title += " - Unlimited"
     }
+
+    return title
   }
 
-  private func headerColor() -> NSColor {
-    let style = effectiveStyle(for: provider.provider)
-    let ringColors = style.ringColors
-    let remaining = provider.metrics.first?.remainingPercent ?? 100
-    let hex: String
-    if provider.metrics.first?.isUnlimited == true {
-      hex = ringColors.outerUnlimitedHexColor
-    } else if remaining >= 70 {
-      hex = ringColors.outerHighHexColor
-    } else if remaining >= 40 {
-      hex = ringColors.outerMediumHexColor
-    } else {
-      hex = ringColors.outerLowHexColor
+  private func primaryLine(for metric: UsageMetric) -> String {
+    if metric.isUnlimited {
+      return "\(metric.label): Unlimited"
     }
-    return NSColor(hexString: hex) ?? .white
+
+    if let remaining = metric.remainingPercent {
+      if let usageLine = metric.usageLine {
+        return "\(metric.label): \(remaining)% left (\(usageLine))"
+      }
+      return "\(metric.label): \(remaining)% left"
+    }
+
+    if let usageLine = metric.usageLine {
+      return "\(metric.label): \(usageLine)"
+    }
+
+    return metric.label
   }
 
-  private func effectiveStyle(for provider: QuotaProvider) -> WidgetStyleSettings {
-    if let override = providerStyleSettings[provider], override.useCustomStyle {
-      return WidgetStyleSettings(
-        backgroundHexColor: override.style.backgroundHexColor ?? widgetStyle.backgroundHexColor,
-        ringColors: override.style.ringColors,
-        useTransparentBackground: override.style.useTransparentBackground
-      )
+  private func secondaryLine(for metric: UsageMetric) -> String? {
+    guard let resetIn = metric.resetIn, !resetIn.isEmpty else {
+      return nil
     }
-    return widgetStyle
+
+    return "Resets in \(resetIn)"
+  }
+
+  private func relativeTimeString(from date: Date) -> String {
+    Self.relativeTimeFormatter.localizedString(for: date, relativeTo: Date())
   }
 }
 
-// MARK: - NSColor Hex Parsing
+private enum MenuBarQuotaStyling {
+  static func remainingPercent(for provider: ProviderUsage) -> Int? {
+    let boundedRemaining = provider.metrics
+      .filter { !$0.isUnlimited }
+      .compactMap(\.remainingPercent)
+
+    if let minimumRemaining = boundedRemaining.min() {
+      return clampPercent(minimumRemaining)
+    }
+
+    if provider.metrics.contains(where: \.isUnlimited) {
+      return 100
+    }
+
+    if let maxUsagePercent = provider.maxUsagePercent {
+      return clampPercent(100 - maxUsagePercent)
+    }
+
+    return nil
+  }
+
+  static func color(
+    for provider: ProviderUsage,
+    globalStyle: WidgetStyleSettings,
+    providerStyleSettings: [QuotaProvider: ProviderStyleSettings]
+  ) -> NSColor {
+    let style = effectiveStyle(for: provider.provider, globalStyle: globalStyle, providerStyleSettings: providerStyleSettings)
+
+    guard let role = colorRole(for: provider) else {
+      return .systemGray
+    }
+
+    let hex = style.ringColors.hexColor(for: role, layer: .outer)
+    return NSColor(hexString: hex) ?? .systemGray
+  }
+
+  private static func colorRole(for provider: ProviderUsage) -> WidgetRingColorRole? {
+    let boundedRemaining = provider.metrics
+      .filter { !$0.isUnlimited }
+      .compactMap(\.remainingPercent)
+
+    if let minimumRemaining = boundedRemaining.min() {
+      let remaining = clampPercent(minimumRemaining)
+      if remaining >= 70 { return .high }
+      if remaining >= 40 { return .medium }
+      return .low
+    }
+
+    if provider.metrics.contains(where: \.isUnlimited) {
+      return .unlimited
+    }
+
+    if let maxUsagePercent = provider.maxUsagePercent {
+      let remaining = clampPercent(100 - maxUsagePercent)
+      if remaining >= 70 { return .high }
+      if remaining >= 40 { return .medium }
+      return .low
+    }
+
+    return nil
+  }
+
+  private static func effectiveStyle(
+    for provider: QuotaProvider,
+    globalStyle: WidgetStyleSettings,
+    providerStyleSettings: [QuotaProvider: ProviderStyleSettings]
+  ) -> WidgetStyleSettings {
+    guard let styleOverride = providerStyleSettings[provider], styleOverride.useCustomStyle else {
+      return globalStyle
+    }
+
+    return WidgetStyleSettings(
+      backgroundHexColor: styleOverride.style.backgroundHexColor ?? globalStyle.backgroundHexColor,
+      ringColors: styleOverride.style.ringColors,
+      useTransparentBackground: styleOverride.style.useTransparentBackground
+    )
+  }
+
+  private static func clampPercent(_ value: Int) -> Int {
+    max(0, min(100, value))
+  }
+}
 
 private extension NSColor {
   convenience init?(hexString: String) {
     var hex = hexString.trimmingCharacters(in: .whitespacesAndNewlines)
-    if hex.hasPrefix("#") { hex.removeFirst() }
+    if hex.hasPrefix("#") {
+      hex.removeFirst()
+    }
 
     if hex.count == 3 || hex.count == 4 {
       hex = hex.map { "\($0)\($0)" }.joined()

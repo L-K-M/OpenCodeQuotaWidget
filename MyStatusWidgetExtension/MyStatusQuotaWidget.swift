@@ -149,8 +149,7 @@ private struct TrendLineChartWidgetView: View {
         TrendChartPlotView(
           series: chartData.series,
           startDate: chartData.startDate,
-          endDate: chartData.endDate,
-          days: days
+          endDate: chartData.endDate
         )
         .frame(maxWidth: .infinity, maxHeight: .infinity)
 
@@ -171,7 +170,6 @@ private struct TrendChartPlotView: View {
   let series: [TrendSeries]
   let startDate: Date
   let endDate: Date
-  let days: Int
 
   var body: some View {
     GeometryReader { proxy in

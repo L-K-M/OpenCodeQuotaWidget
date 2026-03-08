@@ -92,18 +92,8 @@ struct QuotaTimelineProvider: TimelineProvider {
   private func loadSnapshot() -> QuotaSnapshot? {
     do {
       let fileURL = try SharedPaths.snapshotFileURL()
-      print("[OpenCodeQuota Widget] Attempting to load snapshot from: \(fileURL.path)")
-
       let store = SnapshotStore(fileURL: fileURL, appGroupIdentifier: SharedConstants.appGroupIdentifier)
-      print("[OpenCodeQuota Widget] Debug info:\n\(store.debugInfo())")
-
-      if let snapshot = try store.load() {
-        print("[OpenCodeQuota Widget] Successfully loaded snapshot with \(snapshot.providers.count) providers")
-        return snapshot
-      } else {
-        print("[OpenCodeQuota Widget] Snapshot file does not exist")
-        return nil
-      }
+      return try store.load()
     } catch {
       print("[OpenCodeQuota Widget] Failed to load snapshot: \(error)")
       return nil
@@ -114,9 +104,7 @@ struct QuotaTimelineProvider: TimelineProvider {
     do {
       let settingsURL = try SharedPaths.settingsFileURL()
       let store = SettingsStore(fileURL: settingsURL)
-      let settings = try store.load()
-      print("[OpenCodeQuota Widget] Loaded settings from: \(settingsURL.path)")
-      return settings
+      return try store.load()
     } catch {
       print("[OpenCodeQuota Widget] Failed to load settings, using defaults: \(error)")
       return .default
