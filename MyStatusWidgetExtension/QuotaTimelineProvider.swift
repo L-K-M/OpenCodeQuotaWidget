@@ -14,6 +14,8 @@ struct QuotaEntry: TimelineEntry {
 struct QuotaTimelineProvider: TimelineProvider {
   private static let refreshAttemptTimestampKey = "widget.refresh.lastAttemptAt"
   private static let minimumRefreshAttemptSpacingSeconds: TimeInterval = 90
+  private static let providerRequestTimeoutSeconds: TimeInterval = 6
+  private static let refreshWorkBudgetSeconds: TimeInterval = 12
 
   func placeholder(in context: Context) -> QuotaEntry {
     QuotaEntry(
@@ -47,9 +49,36 @@ struct QuotaTimelineProvider: TimelineProvider {
       let now = Date()
       let entry = await makeTimelineEntry(now: now)
       let refreshMinutes = max(15, entry.refreshIntervalMinutes)
-      let nextDate = Calendar.current.date(byAdding: .minute, value: refreshMinutes, to: now) ?? now.addingTimeInterval(1800)
+      let refreshIntervalSeconds = TimeInterval(refreshMinutes * 60)
+      let entrySpacingSeconds: TimeInterval = 5 * 60
 
-      completion(Timeline(entries: [entry], policy: .after(nextDate)))
+      var entries: [QuotaEntry] = []
+      var offset: TimeInterval = 0
+      while offset < refreshIntervalSeconds {
+        let entryDate = now.addingTimeInterval(offset)
+        entries.append(QuotaEntry(
+          date: entryDate,
+          snapshot: entry.snapshot,
+          history: entry.history,
+          refreshIntervalMinutes: entry.refreshIntervalMinutes,
+          settings: entry.settings
+        ))
+        offset += entrySpacingSeconds
+      }
+
+      // Final entry at exactly the next refresh boundary
+      let nextRefreshDate = now.addingTimeInterval(refreshIntervalSeconds)
+      if let lastEntry = entries.last, lastEntry.date < nextRefreshDate {
+        entries.append(QuotaEntry(
+          date: nextRefreshDate,
+          snapshot: entry.snapshot,
+          history: entry.history,
+          refreshIntervalMinutes: entry.refreshIntervalMinutes,
+          settings: entry.settings
+        ))
+      }
+
+      completion(Timeline(entries: entries, policy: .atEnd))
     }
   }
 
@@ -118,8 +147,18 @@ struct QuotaTimelineProvider: TimelineProvider {
       return nil
     }
 
-    let coordinator = QuotaCoordinator.live()
-    let refreshedSnapshot = await coordinator.refresh(configurations: enabledConfigurations, now: now)
+    let coordinator = QuotaCoordinator.live(
+      httpClient: URLSessionHTTPClient(timeoutSeconds: Self.providerRequestTimeoutSeconds)
+    )
+
+    guard let refreshedSnapshot = await refreshWithinBudget(
+      coordinator: coordinator,
+      configurations: enabledConfigurations,
+      now: now
+    ) else {
+      print("[OpenCodeQuota Widget] Refresh budget exceeded before completion")
+      return loadSnapshot()
+    }
 
     do {
       let snapshotURL = try SharedPaths.snapshotFileURL()
@@ -154,6 +193,28 @@ struct QuotaTimelineProvider: TimelineProvider {
 
     defaults.set(now, forKey: Self.refreshAttemptTimestampKey)
     return true
+  }
+
+  private func refreshWithinBudget(
+    coordinator: QuotaCoordinator,
+    configurations: [ProviderRuntimeConfiguration],
+    now: Date
+  ) async -> QuotaSnapshot? {
+    await withTaskGroup(of: QuotaSnapshot?.self) { group in
+      group.addTask {
+        await coordinator.refresh(configurations: configurations, now: now)
+      }
+
+      group.addTask {
+        let budgetNanoseconds = UInt64(Self.refreshWorkBudgetSeconds * 1_000_000_000)
+        try? await Task.sleep(nanoseconds: budgetNanoseconds)
+        return nil
+      }
+
+      let firstCompleted = await group.next() ?? nil
+      group.cancelAll()
+      return firstCompleted
+    }
   }
 
   private func loadSnapshot() -> QuotaSnapshot? {

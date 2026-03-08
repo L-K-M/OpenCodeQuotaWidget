@@ -41,3 +41,4 @@ Or run:
 7. If config files show sandbox permission errors, click `Grant File Access` and select your OpenCode's auth JSON file once.
 
 Widgets refresh from provider APIs on their own timeline, so quota updates continue even when the host app window is closed.
+If widgets still show stale data after an update, open the app once and re-run `Grant File Access` so bookmark permissions are synced for the extension.

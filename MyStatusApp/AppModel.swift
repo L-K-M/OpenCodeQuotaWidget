@@ -29,6 +29,7 @@ final class AppModel: ObservableObject {
   private var cachedAppGroupSnapshotStore: SnapshotStore?
   private var cachedAppGroupHistoryStore: QuotaHistoryStore?
   private var autoRefreshTask: Task<Void, Never>?
+  private var hasBootstrapped = false
 
   init() {
     let baseDirectory = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first
@@ -61,6 +62,9 @@ final class AppModel: ObservableObject {
   }
 
   func bootstrap() async {
+    guard !hasBootstrapped else { return }
+    hasBootstrapped = true
+
     await loadConfiguration()
 
     do {
