@@ -205,6 +205,14 @@ struct SettingsView: View {
 
         Divider()
 
+        settingsRow(title: "Launch at Login") {
+          Toggle("", isOn: model.launchAtLoginBinding())
+            .labelsHidden()
+            .toggleStyle(.switch)
+        }
+
+        Divider()
+
         settingsRow(title: "Visible information") {
           VStack(alignment: .leading, spacing: 8) {
             Toggle(

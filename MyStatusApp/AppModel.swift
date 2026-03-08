@@ -3,6 +3,7 @@ import SwiftUI
 import AppKit
 import UniformTypeIdentifiers
 import WidgetKit
+import ServiceManagement
 import QuotaCore
 
 @MainActor
@@ -18,6 +19,7 @@ final class AppModel: ObservableObject {
   @Published var snapshot: QuotaSnapshot?
   @Published var statusMessage: String = ""
   @Published var isRefreshing = false
+  @Published var launchAtLogin = false
 
   private let settingsStore: SettingsStore
   private let snapshotStore: SnapshotStore
@@ -59,6 +61,12 @@ final class AppModel: ObservableObject {
         ($0, ProviderStyleSettings.defaultValue(for: $0))
       }
     )
+
+    self.launchAtLogin = SMAppService.mainApp.status == .enabled
+
+    Task { @MainActor [weak self] in
+      await self?.bootstrap()
+    }
   }
 
   func bootstrap() async {
@@ -219,6 +227,28 @@ final class AppModel: ObservableObject {
         await refreshNow()
       }
     }
+  }
+
+  func launchAtLoginBinding() -> Binding<Bool> {
+    Binding(
+      get: { self.launchAtLogin },
+      set: { newValue in
+        self.setLaunchAtLogin(newValue)
+      }
+    )
+  }
+
+  func setLaunchAtLogin(_ enabled: Bool) {
+    do {
+      if enabled {
+        try SMAppService.mainApp.register()
+      } else {
+        try SMAppService.mainApp.unregister()
+      }
+    } catch {
+      statusMessage = "Login item update failed: \(error.localizedDescription)"
+    }
+    launchAtLogin = SMAppService.mainApp.status == .enabled
   }
 
   func refreshIntervalBinding() -> Binding<Int> {
