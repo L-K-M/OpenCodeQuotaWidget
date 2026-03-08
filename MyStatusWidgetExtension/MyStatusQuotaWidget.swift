@@ -136,17 +136,7 @@ private struct TrendLineChartWidgetView: View {
     let days = max(1, min(30, entry.settings.widgetVisibility.trendHistoryDays))
     let chartData = trendChartData(for: entry, days: days)
 
-    VStack(alignment: .leading, spacing: 6) {
-      HStack {
-        Text("Quota Trend")
-          .font(.caption.weight(.semibold))
-        Spacer()
-        Text("\(days)d")
-          .font(.caption2.weight(.semibold))
-          .foregroundStyle(.secondary)
-      }
-      .padding(.top, 5)
-
+    VStack(alignment: .leading, spacing: 0) {
       if chartData.series.isEmpty {
         Spacer(minLength: 0)
         Text("No history yet")
@@ -159,19 +149,21 @@ private struct TrendLineChartWidgetView: View {
         TrendChartPlotView(
           series: chartData.series,
           startDate: chartData.startDate,
-          endDate: chartData.endDate
+          endDate: chartData.endDate,
+          days: days
         )
-        .frame(maxWidth: .infinity, minHeight: 72, maxHeight: .infinity)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
 
         if let warning = chartData.warnings.first {
           Text("Risk: \(warning.message)")
             .font(.caption2.weight(.semibold))
             .foregroundStyle(.orange)
             .lineLimit(1)
+            .padding(.top, 4)
         }
       }
     }
-    .padding(10)
+    .padding(6)
   }
 }
 
@@ -179,6 +171,7 @@ private struct TrendChartPlotView: View {
   let series: [TrendSeries]
   let startDate: Date
   let endDate: Date
+  let days: Int
 
   var body: some View {
     GeometryReader { proxy in
@@ -186,6 +179,7 @@ private struct TrendChartPlotView: View {
       let height = max(1, proxy.size.height)
 
       ZStack {
+        // Horizontal grid lines at 0%, 25%, 50%, 75%, 100%
         ForEach([0, 25, 50, 75, 100], id: \.self) { level in
           Path { path in
             let y = yPosition(for: Double(level), height: height)
@@ -195,6 +189,17 @@ private struct TrendChartPlotView: View {
           .stroke(Color.white.opacity(0.12), lineWidth: 0.8)
         }
 
+        // Vertical day-separator lines at each midnight boundary
+        ForEach(dayBoundaries(), id: \.timeIntervalSince1970) { date in
+          Path { path in
+            let x = xPosition(for: date, width: width)
+            path.move(to: CGPoint(x: x, y: 0))
+            path.addLine(to: CGPoint(x: x, y: height))
+          }
+          .stroke(Color.white.opacity(0.15), style: StrokeStyle(lineWidth: 0.8, dash: [3, 3]))
+        }
+
+        // Data lines
         ForEach(series) { line in
           if line.points.count >= 2 {
             Path { path in
@@ -226,6 +231,21 @@ private struct TrendChartPlotView: View {
         }
       }
     }
+  }
+
+  private func dayBoundaries() -> [Date] {
+    let calendar = Calendar.current
+    var boundaries: [Date] = []
+    // Start from the midnight after startDate, walk forward by day
+    var current = calendar.startOfDay(for: startDate)
+    if current <= startDate {
+      current = calendar.date(byAdding: .day, value: 1, to: current) ?? current
+    }
+    while current < endDate {
+      boundaries.append(current)
+      current = calendar.date(byAdding: .day, value: 1, to: current) ?? endDate
+    }
+    return boundaries
   }
 
   private func xPosition(for date: Date, width: CGFloat) -> CGFloat {
