@@ -5,7 +5,27 @@ struct SettingsView: View {
   private enum SettingsTab: Hashable {
     case access
     case settings
+    case style
     case provider(QuotaProvider)
+  }
+
+  private struct TabDescriptor: Identifiable {
+    let tab: SettingsTab
+    let title: String
+    let provider: QuotaProvider?
+
+    var id: String {
+      switch tab {
+      case .access:
+        return "access"
+      case .settings:
+        return "settings"
+      case .style:
+        return "style"
+      case .provider(let provider):
+        return "provider:\(provider.rawValue)"
+      }
+    }
   }
 
   @ObservedObject var model: AppModel
@@ -14,6 +34,21 @@ struct SettingsView: View {
   private let providers = Array(QuotaProvider.allCases)
   private let refreshIntervalOptions = [15, 30, 45, 60, 90, 120, 180]
   private let settingsLabelWidth: CGFloat = 180
+  private let tabGridColumns = [GridItem(.adaptive(minimum: 110), spacing: 6)]
+
+  private var tabDescriptors: [TabDescriptor] {
+    let fixedTabs: [TabDescriptor] = [
+      TabDescriptor(tab: .access, title: "Access", provider: nil),
+      TabDescriptor(tab: .settings, title: "Settings", provider: nil),
+      TabDescriptor(tab: .style, title: "Style", provider: nil)
+    ]
+
+    let providerTabs = providers.map {
+      TabDescriptor(tab: .provider($0), title: tabTitle(for: $0), provider: $0)
+    }
+
+    return fixedTabs + providerTabs
+  }
 
   private var availableRefreshIntervalOptions: [Int] {
     Array(Set(refreshIntervalOptions + [model.refreshIntervalMinutes])).sorted()
@@ -34,23 +69,18 @@ struct SettingsView: View {
         .fill(Color.secondary.opacity(0.24))
         .frame(height: 1)
 
-      ScrollView(.horizontal, showsIndicators: false) {
-        HStack(spacing: 0) {
-          tabButton(for: .access, title: "Access")
-          tabButton(for: .settings, title: "Settings")
-
-          ForEach(providers, id: \.rawValue) { (provider: QuotaProvider) in
-            tabButton(
-              for: .provider(provider),
-              title: tabTitle(for: provider),
-              provider: provider
-            )
-          }
+      LazyVGrid(columns: tabGridColumns, spacing: 6) {
+        ForEach(tabDescriptors) { descriptor in
+          tabButton(
+            for: descriptor.tab,
+            title: descriptor.title,
+            provider: descriptor.provider
+          )
         }
-        .padding(.horizontal, 14)
-        .padding(.top, 10)
-        .padding(.bottom, -1)
       }
+      .padding(.horizontal, 14)
+      .padding(.top, 10)
+      .padding(.bottom, 0)
     }
     .background(.regularMaterial)
   }
@@ -62,6 +92,8 @@ struct SettingsView: View {
       accessTab
     case .settings:
       settingsTab
+    case .style:
+      styleTab
     case .provider(let provider):
       providerTab(for: provider)
     }
@@ -86,11 +118,12 @@ struct SettingsView: View {
 
         Text(title)
           .font(.system(size: 14, weight: .semibold))
+          .lineLimit(1)
       }
-      .frame(width: 110, alignment: .center)
-      .padding(.horizontal, 14)
+      .frame(maxWidth: .infinity, alignment: .center)
+      .padding(.horizontal, 10)
       .padding(.vertical, 9)
-      .frame(minHeight: 36)
+      .frame(minHeight: 36, maxHeight: 36)
       .contentShape(Rectangle())
       .background {
         if isSelected {
@@ -99,20 +132,21 @@ struct SettingsView: View {
         }
       }
       .overlay {
-        if isSelected {
-          TopTabBorderShape(cornerRadius: 9)
-            .stroke(Color.secondary.opacity(0.38), lineWidth: 1)
-        }
+        TopTabBorderShape(cornerRadius: 9)
+          .stroke(
+            isSelected ? Color.secondary.opacity(0.38) : Color.secondary.opacity(0.24),
+            lineWidth: 1
+          )
       }
       .overlay(alignment: .bottom) {
         if isSelected {
           Rectangle()
             .fill(.background)
-            .frame(height: 2)
+            .frame(height: 3)
+            .padding(.horizontal, -1)
             .offset(y: 1)
         }
       }
-      .padding(.trailing, 4)
     }
     .buttonStyle(.plain)
     .foregroundStyle(isSelected ? Color.primary : Color.secondary.opacity(0.92))
@@ -133,6 +167,16 @@ struct SettingsView: View {
     ScrollView {
       VStack(alignment: .leading, spacing: 28) {
         generalSettingsSection
+      }
+      .frame(maxWidth: .infinity, alignment: .leading)
+      .padding(24)
+    }
+  }
+
+  private var styleTab: some View {
+    ScrollView {
+      VStack(alignment: .leading, spacing: 28) {
+        styleSettingsSection
       }
       .frame(maxWidth: .infinity, alignment: .leading)
       .padding(24)
@@ -188,7 +232,7 @@ struct SettingsView: View {
 
   private var generalSettingsSection: some View {
     VStack(alignment: .leading, spacing: 12) {
-      Text("Settings")
+      Text("General Settings")
         .font(.title3.weight(.semibold))
 
       VStack(spacing: 0) {
@@ -214,89 +258,80 @@ struct SettingsView: View {
         Divider()
 
         settingsRow(title: "Visible information") {
-          VStack(alignment: .leading, spacing: 8) {
-            Toggle(
-              "Show percentages in widgets",
-              isOn: model.widgetVisibilityBinding(for: \.showPercentageValues)
-            )
-            Toggle(
-              "Show both limits in dashboard rows",
-              isOn: model.widgetVisibilityBinding(for: \.showDualLimitPercentagesInDashboard)
-            )
-            Toggle(
-              "Progress bars in medium widget",
-              isOn: model.widgetVisibilityBinding(for: \.showMediumProgressBars)
-            )
-            Toggle(
-              "Timestamp in dashboard widgets",
-              isOn: model.widgetVisibilityBinding(for: \.showTimestamp)
-            )
-            Toggle(
-              "Failure count in dashboard widgets",
-              isOn: model.widgetVisibilityBinding(for: \.showFailureCount)
-            )
-            Toggle(
-              "Reset countdown in provider widgets",
-              isOn: model.widgetVisibilityBinding(for: \.showResetInfo)
-            )
-            Toggle(
-              "Metric summary in overview widget",
-              isOn: model.widgetVisibilityBinding(for: \.showOverviewMetricSummary)
-            )
+          VStack(alignment: .leading, spacing: 10) {
+            settingsGroupCard(title: "All Widgets") {
+              Toggle(
+                "Show percentages in widgets",
+                isOn: model.widgetVisibilityBinding(for: \.showPercentageValues)
+              )
+            }
 
-            HStack(spacing: 10) {
-              Text("Providers in small dashboard")
-              Spacer()
-              Stepper(
-                "",
+            settingsGroupCard(title: "Dashboard Widgets") {
+              Toggle(
+                "Show both limits in dashboard rows",
+                isOn: model.widgetVisibilityBinding(for: \.showDualLimitPercentagesInDashboard)
+              )
+              Toggle(
+                "Show progress bars in medium dashboard",
+                isOn: model.widgetVisibilityBinding(for: \.showMediumProgressBars)
+              )
+              Toggle(
+                "Show timestamp in dashboard widgets",
+                isOn: model.widgetVisibilityBinding(for: \.showTimestamp)
+              )
+              Toggle(
+                "Show failure count in dashboard widgets",
+                isOn: model.widgetVisibilityBinding(for: \.showFailureCount)
+              )
+              Toggle(
+                "Show summary in small dashboard",
+                isOn: model.widgetVisibilityBinding(for: \.showOverviewMetricSummary)
+              )
+
+              visibilityStepperRow(
+                title: "Providers shown in small dashboard",
                 value: model.widgetVisibilityIntBinding(for: \.smallDashboardProviderLimit, range: 1...4),
-                in: 1...4
+                range: 1...4,
+                displayedValue: model.widgetVisibility.smallDashboardProviderLimit
               )
-              .labelsHidden()
 
-              Text("\(model.widgetVisibility.smallDashboardProviderLimit)")
-                .font(.subheadline.weight(.semibold))
-                .monospacedDigit()
-                .frame(minWidth: 24, alignment: .trailing)
-            }
-
-            HStack(spacing: 10) {
-              Text("Providers in medium widget")
-              Spacer()
-              Stepper(
-                "",
+              visibilityStepperRow(
+                title: "Providers shown in medium dashboard",
                 value: model.widgetVisibilityIntBinding(for: \.mediumProviderLimit, range: 1...12),
-                in: 1...12
+                range: 1...12,
+                displayedValue: model.widgetVisibility.mediumProviderLimit
               )
-              .labelsHidden()
-
-              Text("\(model.widgetVisibility.mediumProviderLimit)")
-                .font(.subheadline.weight(.semibold))
-                .monospacedDigit()
-                .frame(minWidth: 24, alignment: .trailing)
             }
 
-            HStack(spacing: 10) {
-              Text("Trend chart history (days)")
-              Spacer()
-              Stepper(
-                "",
-                value: model.widgetVisibilityIntBinding(for: \.trendHistoryDays, range: 1...30),
-                in: 1...30
+            settingsGroupCard(title: "Provider Widgets") {
+              Toggle(
+                "Show reset countdown in provider widgets",
+                isOn: model.widgetVisibilityBinding(for: \.showResetInfo)
               )
-              .labelsHidden()
+            }
 
-              Text("\(model.widgetVisibility.trendHistoryDays)")
-                .font(.subheadline.weight(.semibold))
-                .monospacedDigit()
-                .frame(minWidth: 24, alignment: .trailing)
+            settingsGroupCard(title: "Trend Widget") {
+              visibilityStepperRow(
+                title: "Days shown in trend chart",
+                value: model.widgetVisibilityIntBinding(for: \.trendHistoryDays, range: 1...30),
+                range: 1...30,
+                displayedValue: model.widgetVisibility.trendHistoryDays
+              )
             }
           }
           .toggleStyle(.switch)
         }
 
-        Divider()
+      }
+    }
+  }
 
+  private var styleSettingsSection: some View {
+    VStack(alignment: .leading, spacing: 12) {
+      Text("Widget Style")
+        .font(.title3.weight(.semibold))
+
+      VStack(spacing: 0) {
         settingsRow(title: "Style preset") {
           Picker("", selection: model.widgetStylePresetBinding()) {
             Text("Custom").tag(model.customStylePresetID)
@@ -628,6 +663,44 @@ struct SettingsView: View {
         .frame(maxWidth: .infinity, alignment: .leading)
     }
     .padding(.vertical, 8)
+  }
+
+  private func settingsGroupCard<Content: View>(
+    title: String,
+    @ViewBuilder content: () -> Content
+  ) -> some View {
+    VStack(alignment: .leading, spacing: 8) {
+      Text(title)
+        .font(.caption.weight(.semibold))
+        .foregroundStyle(.secondary)
+
+      VStack(alignment: .leading, spacing: 8) {
+        content()
+      }
+    }
+    .padding(10)
+    .frame(maxWidth: .infinity, alignment: .leading)
+    .background(.quaternary.opacity(0.4), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+  }
+
+  private func visibilityStepperRow(
+    title: String,
+    value: Binding<Int>,
+    range: ClosedRange<Int>,
+    displayedValue: Int
+  ) -> some View {
+    HStack(spacing: 10) {
+      Text(title)
+      Spacer()
+
+      Stepper("", value: value, in: range)
+        .labelsHidden()
+
+      Text("\(displayedValue)")
+        .font(.subheadline.weight(.semibold))
+        .monospacedDigit()
+        .frame(minWidth: 24, alignment: .trailing)
+    }
   }
 
   private func ringColorPickerRow(title: String, binding: Binding<Color>) -> some View {
