@@ -8,7 +8,7 @@ struct OpenCodeQuotaWidget: Widget {
   var body: some WidgetConfiguration {
     StaticConfiguration(kind: kind, provider: QuotaTimelineProvider()) { entry in
       DashboardWidgetRootView(entry: entry)
-        .quotaWidgetBackground(entry: entry, provider: nil)
+        .quotaWidgetBackground(entry: entry, kind: .dashboard)
     }
     .configurationDisplayName("OpenCodeQuota Dashboard")
     .description("Compact quota overview across all enabled providers.")
@@ -22,7 +22,7 @@ struct QuotaTrendChartWidget: Widget {
   var body: some WidgetConfiguration {
     StaticConfiguration(kind: kind, provider: QuotaTimelineProvider()) { entry in
       TrendLineChartWidgetView(entry: entry)
-        .quotaWidgetBackground(entry: entry, provider: nil)
+        .quotaWidgetBackground(entry: entry, kind: .trend)
     }
     .configurationDisplayName("Quota Trend Chart")
     .description("History lines across all providers and limits.")
@@ -93,17 +93,23 @@ private func providerWidgetConfiguration(
 ) -> some WidgetConfiguration {
   StaticConfiguration(kind: kind, provider: QuotaTimelineProvider()) { entry in
     ProviderSmallQuotaView(entry: entry, provider: provider)
-      .quotaWidgetBackground(entry: entry, provider: provider)
+      .quotaWidgetBackground(entry: entry, kind: .provider(provider))
   }
   .configurationDisplayName(displayName)
   .description(widgetDescription)
   .supportedFamilies([.systemSmall])
 }
 
+private enum QuotaWidgetBackgroundKind {
+  case dashboard
+  case trend
+  case provider(QuotaProvider)
+}
+
 private extension View {
   @ViewBuilder
-  func quotaWidgetBackground(entry: QuotaEntry, provider: QuotaProvider?) -> some View {
-    let style = entry.style(for: provider)
+  func quotaWidgetBackground(entry: QuotaEntry, kind: QuotaWidgetBackgroundKind) -> some View {
+    let style = entry.backgroundStyle(for: kind)
 
     if style.useTransparentBackground {
       self.containerBackground(.clear, for: .widget)
@@ -290,64 +296,79 @@ private struct OverviewSmallQuotaView: View {
   let entry: QuotaEntry
 
   var body: some View {
-    VStack(alignment: .leading, spacing: 6) {
-      Text("OpenCodeQuota")
-        .font(.caption2.weight(.semibold))
-        .foregroundStyle(.secondary)
-
-      if let usage = featuredProvider {
-        let style = entry.style(for: usage.provider)
-
-        Text(usage.title)
+    VStack(alignment: .leading, spacing: 5) {
+      HStack {
+        Text("AI Quota")
           .font(.caption.weight(.semibold))
-          .lineLimit(1)
+        Spacer()
+        if entry.settings.widgetVisibility.showTimestamp, let snapshot = entry.snapshot {
+          Text(snapshot.generatedAt, style: .time)
+            .font(.caption2)
+            .foregroundStyle(.secondary)
+        }
+      }
 
-        ConcentricQuotaChart(
-          metrics: chartMetrics(for: usage),
-          ringColors: style.ringColors,
-          centerLabelStyle: entry.settings.widgetVisibility.showPercentageValues ? .metrics : .hidden
-        )
-          .frame(maxWidth: .infinity, minHeight: 88, maxHeight: .infinity)
+      if let snapshot = entry.snapshot, !snapshot.providers.isEmpty {
+        let providerLimit = max(1, min(entry.settings.widgetVisibility.smallDashboardProviderLimit, 4))
+
+        ForEach(sortedProviders(snapshot.providers).prefix(providerLimit)) { usage in
+          CompactProviderUsageRow(
+            usage: usage,
+            ringColors: entry.style(for: usage.provider).ringColors,
+            showProgressBar: true,
+            showPercentages: entry.settings.widgetVisibility.showPercentageValues,
+            showDualLimitPercentages: entry.settings.widgetVisibility.showDualLimitPercentagesInDashboard
+          )
+        }
 
         if entry.settings.widgetVisibility.showOverviewMetricSummary {
-          Text(
-            metricSummary(
-              for: usage,
-              showPercentages: entry.settings.widgetVisibility.showPercentageValues
-            )
-          )
+          Text(overviewSummary(for: snapshot.providers))
             .font(.caption2)
             .foregroundStyle(.secondary)
             .lineLimit(1)
         }
+
+        if entry.settings.widgetVisibility.showFailureCount, !snapshot.failures.isEmpty {
+          Text("\(snapshot.failures.count) unavailable")
+            .font(.caption2)
+            .foregroundStyle(.orange)
+        }
       } else {
         Spacer(minLength: 0)
-        Text("OpenCodeQuota app")
+        Text("No providers configured")
           .font(.caption.weight(.semibold))
-        Text("Enable providers and refresh")
+        Text("Load credentials from OpenCode config")
           .font(.caption2)
           .foregroundStyle(.secondary)
         Spacer(minLength: 0)
       }
     }
-    .padding(10)
+    .padding(8)
   }
 
-  private var featuredProvider: ProviderUsage? {
-    guard let providers = entry.snapshot?.providers, !providers.isEmpty else {
-      return nil
-    }
+  private func sortedProviders(_ providers: [ProviderUsage]) -> [ProviderUsage] {
+    providers.sorted { lhs, rhs in
+      let lhsRemaining = providerRemainingPercent(for: lhs) ?? Int.max
+      let rhsRemaining = providerRemainingPercent(for: rhs) ?? Int.max
 
-    let providersWithDualRings = providers.filter { chartMetrics(for: $0).count >= 2 }
-    if let mostLoadedDual = providersWithDualRings.max(by: usageScoreSort) {
-      return mostLoadedDual
-    }
+      if lhsRemaining != rhsRemaining {
+        return lhsRemaining < rhsRemaining
+      }
 
-    return providers.max(by: usageScoreSort)
+      return lhs.provider.displayName < rhs.provider.displayName
+    }
   }
 
-  private func usageScoreSort(_ lhs: ProviderUsage, _ rhs: ProviderUsage) -> Bool {
-    (lhs.maxUsagePercent ?? 0) < (rhs.maxUsagePercent ?? 0)
+  private func overviewSummary(for providers: [ProviderUsage]) -> String {
+    guard !providers.isEmpty else {
+      return "No providers"
+    }
+
+    if let worstRemaining = providers.compactMap({ providerRemainingPercent(for: $0) }).min() {
+      return "\(providers.count) providers • lowest \(worstRemaining)% left"
+    }
+
+    return "\(providers.count) providers tracked"
   }
 }
 
@@ -446,7 +467,8 @@ private struct MediumCompactQuotaView: View {
             usage: usage,
             ringColors: entry.style(for: usage.provider).ringColors,
             showProgressBar: entry.settings.widgetVisibility.showMediumProgressBars,
-            showPercentages: entry.settings.widgetVisibility.showPercentageValues
+            showPercentages: entry.settings.widgetVisibility.showPercentageValues,
+            showDualLimitPercentages: entry.settings.widgetVisibility.showDualLimitPercentagesInDashboard
           )
         }
 
@@ -470,7 +492,14 @@ private struct MediumCompactQuotaView: View {
 
   private func sortedProviders(_ providers: [ProviderUsage]) -> [ProviderUsage] {
     providers.sorted { lhs, rhs in
-      (lhs.maxUsagePercent ?? 0) > (rhs.maxUsagePercent ?? 0)
+      let lhsRemaining = providerRemainingPercent(for: lhs) ?? Int.max
+      let rhsRemaining = providerRemainingPercent(for: rhs) ?? Int.max
+
+      if lhsRemaining != rhsRemaining {
+        return lhsRemaining < rhsRemaining
+      }
+
+      return lhs.provider.displayName < rhs.provider.displayName
     }
   }
 }
@@ -480,8 +509,12 @@ private struct CompactProviderUsageRow: View {
   let ringColors: WidgetRingColors
   let showProgressBar: Bool
   let showPercentages: Bool
+  let showDualLimitPercentages: Bool
 
   var body: some View {
+    let metric = dashboardPrimaryMetric(for: usage)
+    let dualPercent = showDualLimitPercentages ? dualLimitPercentText(for: usage) : nil
+
     HStack(spacing: 6) {
       Text(shortName)
         .font(.caption2.weight(.semibold))
@@ -500,16 +533,12 @@ private struct CompactProviderUsageRow: View {
       }
 
       if showPercentages {
-        Text(percentText(for: metric))
+        Text(dualPercent ?? percentText(for: metric))
           .font(.caption2.weight(.semibold))
           .monospacedDigit()
-          .frame(width: 32, alignment: .trailing)
+          .frame(width: dualPercent == nil ? 36 : 60, alignment: .trailing)
       }
     }
-  }
-
-  private var metric: UsageMetric? {
-    usage.metrics.first(where: { $0.remainingPercent != nil || $0.isUnlimited }) ?? usage.metrics.first
   }
 
   private var shortName: String {
@@ -636,6 +665,60 @@ private struct MiniProgressBar: View {
   private var progressColor: Color {
     ringColor(for: percent ?? 0, colors: ringColors, layer: .outer)
   }
+}
+
+private func dashboardPrimaryMetric(for usage: ProviderUsage) -> UsageMetric? {
+  let boundedMetrics = usage.metrics
+    .filter { !$0.isUnlimited }
+    .compactMap { metric -> UsageMetric? in
+      guard metric.remainingPercent != nil else {
+        return nil
+      }
+      return metric
+    }
+
+  if let mostConstrained = boundedMetrics.min(by: { ($0.remainingPercent ?? Int.max) < ($1.remainingPercent ?? Int.max) }) {
+    return mostConstrained
+  }
+
+  if let unlimitedMetric = usage.metrics.first(where: \.isUnlimited) {
+    return unlimitedMetric
+  }
+
+  return usage.metrics.first(where: { $0.remainingPercent != nil }) ?? usage.metrics.first
+}
+
+private func providerRemainingPercent(for usage: ProviderUsage) -> Int? {
+  let boundedRemaining = usage.metrics
+    .filter { !$0.isUnlimited }
+    .compactMap(\.remainingPercent)
+
+  if let minimumRemaining = boundedRemaining.min() {
+    return max(0, min(100, minimumRemaining))
+  }
+
+  if usage.metrics.contains(where: \.isUnlimited) {
+    return 100
+  }
+
+  if let maxUsagePercent = usage.maxUsagePercent {
+    return max(0, min(100, 100 - maxUsagePercent))
+  }
+
+  return nil
+}
+
+private func dualLimitPercentText(for usage: ProviderUsage) -> String? {
+  let boundedPercentages = usage.metrics
+    .filter { !$0.isUnlimited }
+    .compactMap(\.remainingPercent)
+    .map { max(0, min(100, $0)) }
+
+  guard boundedPercentages.count >= 2 else {
+    return nil
+  }
+
+  return "\(boundedPercentages[0])%/\(boundedPercentages[1])%"
 }
 
 private func chartMetrics(for usage: ProviderUsage) -> [UsageMetric] {
@@ -847,26 +930,6 @@ private func depletionWarnings(for series: [TrendSeries], now: Date) -> [TrendWa
       message: "\(line.displayLabel) may run out before reset"
     )
   }
-}
-
-private func metricSummary(for usage: ProviderUsage, showPercentages: Bool) -> String {
-  let metrics = chartMetrics(for: usage)
-  guard let first = metrics.first else {
-    return "No quota metrics"
-  }
-
-  guard showPercentages else {
-    if metrics.count >= 2 {
-      return "\(metrics.count) limits tracked"
-    }
-    return first.label
-  }
-
-  if metrics.count >= 2, let second = metrics.dropFirst().first {
-    return "S: \(percentText(for: first))  L: \(percentText(for: second))"
-  }
-
-  return "\(first.label): \(percentText(for: first))"
 }
 
 private func compactProviderName(for provider: QuotaProvider) -> String {
@@ -1114,6 +1177,17 @@ private func unlimitedColor(for colors: WidgetRingColors, layer: WidgetRingLayer
 }
 
 private extension QuotaEntry {
+  func backgroundStyle(for kind: QuotaWidgetBackgroundKind) -> WidgetStyleSettings {
+    switch kind {
+    case .provider(let provider):
+      return style(for: provider)
+    case .dashboard:
+      return backgroundStyle(from: settings.widgetBackgroundSettings.dashboard)
+    case .trend:
+      return backgroundStyle(from: settings.widgetBackgroundSettings.trend)
+    }
+  }
+
   func style(for provider: QuotaProvider?) -> WidgetStyleSettings {
     let globalStyle = settings.widgetStyle
 
@@ -1133,6 +1207,22 @@ private extension QuotaEntry {
       backgroundHexColor: resolvedBackground,
       ringColors: override.style.ringColors,
       useTransparentBackground: override.style.useTransparentBackground
+    )
+  }
+
+  private func backgroundStyle(from override: WidgetBackgroundOverride) -> WidgetStyleSettings {
+    let globalStyle = settings.widgetStyle
+
+    guard override.useCustomBackground else {
+      return globalStyle
+    }
+
+    let resolvedBackground = override.backgroundHexColor ?? globalStyle.backgroundHexColor
+
+    return WidgetStyleSettings(
+      backgroundHexColor: resolvedBackground,
+      ringColors: globalStyle.ringColors,
+      useTransparentBackground: override.useTransparentBackground
     )
   }
 }

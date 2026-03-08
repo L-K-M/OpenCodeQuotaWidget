@@ -10,6 +10,7 @@ import QuotaCore
 final class AppModel: ObservableObject {
   @Published var refreshIntervalMinutes: Int = 30
   @Published var widgetStyle: WidgetStyleSettings = .default
+  @Published var widgetBackgroundSettings: WidgetBackgroundSettings = .default
   @Published var widgetVisibility: WidgetVisibilitySettings = .default
   @Published var providerStyleSettings: [QuotaProvider: ProviderStyleSettings]
   @Published var credentialStatuses: [ProviderCredentialStatus] = []
@@ -100,6 +101,7 @@ final class AppModel: ObservableObject {
 
     refreshIntervalMinutes = max(15, settings.refreshIntervalMinutes)
     widgetStyle = settings.widgetStyle
+    widgetBackgroundSettings = settings.widgetBackgroundSettings
     widgetVisibility = settings.widgetVisibility
     providerStyleSettings = Dictionary(
       uniqueKeysWithValues: QuotaProvider.allCases.map { provider in
@@ -347,6 +349,60 @@ final class AppModel: ObservableObject {
     )
   }
 
+  enum WidgetBackgroundTarget {
+    case dashboard
+    case trend
+  }
+
+  func widgetBackgroundOverride(for target: WidgetBackgroundTarget) -> WidgetBackgroundOverride {
+    switch target {
+    case .dashboard:
+      return widgetBackgroundSettings.dashboard
+    case .trend:
+      return widgetBackgroundSettings.trend
+    }
+  }
+
+  func widgetBackgroundOverrideBinding(for target: WidgetBackgroundTarget) -> Binding<Bool> {
+    Binding(
+      get: { self.widgetBackgroundOverride(for: target).useCustomBackground },
+      set: { newValue in
+        self.updateWidgetBackgroundOverride(for: target) { override in
+          override.useCustomBackground = newValue
+        }
+      }
+    )
+  }
+
+  func widgetBackgroundColorBinding(for target: WidgetBackgroundTarget) -> Binding<Color> {
+    Binding(
+      get: {
+        let override = self.widgetBackgroundOverride(for: target)
+        let resolvedHex = override.backgroundHexColor ?? self.widgetStyle.backgroundHexColor
+        return Self.color(fromHex: resolvedHex)
+      },
+      set: { newValue in
+        self.updateWidgetBackgroundOverride(for: target) { override in
+          override.useCustomBackground = true
+          override.backgroundHexColor = Self.hexColor(from: newValue, allowTransparency: true)
+          override.useTransparentBackground = false
+        }
+      }
+    )
+  }
+
+  func widgetTransparentBackgroundBinding(for target: WidgetBackgroundTarget) -> Binding<Bool> {
+    Binding(
+      get: { self.widgetBackgroundOverride(for: target).useTransparentBackground },
+      set: { newValue in
+        self.updateWidgetBackgroundOverride(for: target) { override in
+          override.useCustomBackground = true
+          override.useTransparentBackground = newValue
+        }
+      }
+    )
+  }
+
   func widgetRingColorBinding(
     for role: WidgetRingColorRole,
     layer: WidgetRingLayer
@@ -477,6 +533,24 @@ final class AppModel: ObservableObject {
     saveConfiguration()
   }
 
+  private func updateWidgetBackgroundOverride(
+    for target: WidgetBackgroundTarget,
+    mutate: (inout WidgetBackgroundOverride) -> Void
+  ) {
+    switch target {
+    case .dashboard:
+      var override = widgetBackgroundSettings.dashboard
+      mutate(&override)
+      widgetBackgroundSettings.dashboard = override
+    case .trend:
+      var override = widgetBackgroundSettings.trend
+      mutate(&override)
+      widgetBackgroundSettings.trend = override
+    }
+
+    saveConfiguration()
+  }
+
   private func loadSettingsFromPreferredStore() throws -> AppSettings {
     return try settingsStore.load()
   }
@@ -492,6 +566,7 @@ final class AppModel: ObservableObject {
         ProviderSettings(provider: $0, isEnabled: true)
       },
       widgetStyle: widgetStyle,
+      widgetBackgroundSettings: widgetBackgroundSettings,
       providerStyleSettings: QuotaProvider.allCases.map { provider in
         providerStyle(for: provider)
       },

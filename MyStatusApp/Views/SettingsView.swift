@@ -220,15 +220,19 @@ struct SettingsView: View {
               isOn: model.widgetVisibilityBinding(for: \.showPercentageValues)
             )
             Toggle(
+              "Show both limits in dashboard rows",
+              isOn: model.widgetVisibilityBinding(for: \.showDualLimitPercentagesInDashboard)
+            )
+            Toggle(
               "Progress bars in medium widget",
               isOn: model.widgetVisibilityBinding(for: \.showMediumProgressBars)
             )
             Toggle(
-              "Timestamp in medium widget",
+              "Timestamp in dashboard widgets",
               isOn: model.widgetVisibilityBinding(for: \.showTimestamp)
             )
             Toggle(
-              "Failure count in medium widget",
+              "Failure count in dashboard widgets",
               isOn: model.widgetVisibilityBinding(for: \.showFailureCount)
             )
             Toggle(
@@ -239,6 +243,22 @@ struct SettingsView: View {
               "Metric summary in overview widget",
               isOn: model.widgetVisibilityBinding(for: \.showOverviewMetricSummary)
             )
+
+            HStack(spacing: 10) {
+              Text("Providers in small dashboard")
+              Spacer()
+              Stepper(
+                "",
+                value: model.widgetVisibilityIntBinding(for: \.smallDashboardProviderLimit, range: 1...4),
+                in: 1...4
+              )
+              .labelsHidden()
+
+              Text("\(model.widgetVisibility.smallDashboardProviderLimit)")
+                .font(.subheadline.weight(.semibold))
+                .monospacedDigit()
+                .frame(minWidth: 24, alignment: .trailing)
+            }
 
             HStack(spacing: 10) {
               Text("Providers in medium widget")
@@ -304,6 +324,48 @@ struct SettingsView: View {
             .labelsHidden()
             .frame(width: 48)
             .disabled(model.widgetStyle.useTransparentBackground)
+        }
+
+        Divider()
+
+        settingsRow(title: "Dashboard background") {
+          VStack(alignment: .leading, spacing: 8) {
+            Toggle("Override global background", isOn: model.widgetBackgroundOverrideBinding(for: .dashboard))
+
+            if model.widgetBackgroundOverride(for: .dashboard).useCustomBackground {
+              HStack(spacing: 10) {
+                Toggle("Transparent", isOn: model.widgetTransparentBackgroundBinding(for: .dashboard))
+                  .toggleStyle(.switch)
+                Spacer()
+                ColorPicker("", selection: model.widgetBackgroundColorBinding(for: .dashboard), supportsOpacity: true)
+                  .labelsHidden()
+                  .frame(width: 48)
+                  .disabled(model.widgetBackgroundOverride(for: .dashboard).useTransparentBackground)
+              }
+            }
+          }
+          .toggleStyle(.switch)
+        }
+
+        Divider()
+
+        settingsRow(title: "Trend background") {
+          VStack(alignment: .leading, spacing: 8) {
+            Toggle("Override global background", isOn: model.widgetBackgroundOverrideBinding(for: .trend))
+
+            if model.widgetBackgroundOverride(for: .trend).useCustomBackground {
+              HStack(spacing: 10) {
+                Toggle("Transparent", isOn: model.widgetTransparentBackgroundBinding(for: .trend))
+                  .toggleStyle(.switch)
+                Spacer()
+                ColorPicker("", selection: model.widgetBackgroundColorBinding(for: .trend), supportsOpacity: true)
+                  .labelsHidden()
+                  .frame(width: 48)
+                  .disabled(model.widgetBackgroundOverride(for: .trend).useTransparentBackground)
+              }
+            }
+          }
+          .toggleStyle(.switch)
         }
 
         Divider()

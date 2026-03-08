@@ -38,12 +38,16 @@ final class StoreRoundTripTests: XCTestCase {
     XCTAssertEqual(settings.refreshIntervalMinutes, 30)
     XCTAssertEqual(settings.providers.count, QuotaProvider.allCases.count)
     XCTAssertFalse(settings.widgetStyle.useTransparentBackground)
+    XCTAssertFalse(settings.widgetBackgroundSettings.dashboard.useCustomBackground)
+    XCTAssertFalse(settings.widgetBackgroundSettings.trend.useCustomBackground)
     XCTAssertTrue(settings.widgetVisibility.showTimestamp)
     XCTAssertTrue(settings.widgetVisibility.showFailureCount)
     XCTAssertTrue(settings.widgetVisibility.showResetInfo)
     XCTAssertTrue(settings.widgetVisibility.showOverviewMetricSummary)
     XCTAssertTrue(settings.widgetVisibility.showPercentageValues)
+    XCTAssertTrue(settings.widgetVisibility.showDualLimitPercentagesInDashboard)
     XCTAssertTrue(settings.widgetVisibility.showMediumProgressBars)
+    XCTAssertEqual(settings.widgetVisibility.smallDashboardProviderLimit, 2)
     XCTAssertEqual(settings.widgetVisibility.mediumProviderLimit, 6)
     XCTAssertEqual(settings.widgetVisibility.trendHistoryDays, 7)
   }
@@ -57,6 +61,18 @@ final class StoreRoundTripTests: XCTestCase {
       refreshIntervalMinutes: 45,
       providers: QuotaProvider.allCases.map { ProviderSettings(provider: $0, isEnabled: true) },
       widgetStyle: WidgetStyleSettings(useTransparentBackground: true),
+      widgetBackgroundSettings: WidgetBackgroundSettings(
+        dashboard: WidgetBackgroundOverride(
+          useCustomBackground: true,
+          backgroundHexColor: "#223344",
+          useTransparentBackground: false
+        ),
+        trend: WidgetBackgroundOverride(
+          useCustomBackground: true,
+          backgroundHexColor: "#445566",
+          useTransparentBackground: true
+        )
+      ),
       providerStyleSettings: QuotaProvider.allCases.map { ProviderStyleSettings.defaultValue(for: $0) },
       widgetVisibility: WidgetVisibilitySettings(
         showTimestamp: false,
@@ -64,7 +80,9 @@ final class StoreRoundTripTests: XCTestCase {
         showResetInfo: false,
         showOverviewMetricSummary: true,
         showPercentageValues: false,
+        showDualLimitPercentagesInDashboard: false,
         showMediumProgressBars: false,
+        smallDashboardProviderLimit: 3,
         mediumProviderLimit: 4,
         trendHistoryDays: 14
       )
@@ -74,12 +92,20 @@ final class StoreRoundTripTests: XCTestCase {
     let loaded = try store.load()
 
     XCTAssertTrue(loaded.widgetStyle.useTransparentBackground)
+    XCTAssertTrue(loaded.widgetBackgroundSettings.dashboard.useCustomBackground)
+    XCTAssertEqual(loaded.widgetBackgroundSettings.dashboard.backgroundHexColor, "#223344")
+    XCTAssertFalse(loaded.widgetBackgroundSettings.dashboard.useTransparentBackground)
+    XCTAssertTrue(loaded.widgetBackgroundSettings.trend.useCustomBackground)
+    XCTAssertEqual(loaded.widgetBackgroundSettings.trend.backgroundHexColor, "#445566")
+    XCTAssertTrue(loaded.widgetBackgroundSettings.trend.useTransparentBackground)
     XCTAssertFalse(loaded.widgetVisibility.showTimestamp)
     XCTAssertTrue(loaded.widgetVisibility.showFailureCount)
     XCTAssertFalse(loaded.widgetVisibility.showResetInfo)
     XCTAssertTrue(loaded.widgetVisibility.showOverviewMetricSummary)
     XCTAssertFalse(loaded.widgetVisibility.showPercentageValues)
+    XCTAssertFalse(loaded.widgetVisibility.showDualLimitPercentagesInDashboard)
     XCTAssertFalse(loaded.widgetVisibility.showMediumProgressBars)
+    XCTAssertEqual(loaded.widgetVisibility.smallDashboardProviderLimit, 3)
     XCTAssertEqual(loaded.widgetVisibility.mediumProviderLimit, 4)
     XCTAssertEqual(loaded.widgetVisibility.trendHistoryDays, 14)
   }

@@ -595,13 +595,90 @@ public struct ProviderStyleSettings: Codable, Hashable, Sendable {
   }
 }
 
+public struct WidgetBackgroundOverride: Codable, Hashable, Sendable {
+  public var useCustomBackground: Bool
+  public var backgroundHexColor: String?
+  public var useTransparentBackground: Bool
+
+  public init(
+    useCustomBackground: Bool = false,
+    backgroundHexColor: String? = nil,
+    useTransparentBackground: Bool = false
+  ) {
+    self.useCustomBackground = useCustomBackground
+    self.backgroundHexColor = normalizeHexColor(backgroundHexColor)
+    self.useTransparentBackground = useTransparentBackground
+  }
+
+  private enum CodingKeys: String, CodingKey {
+    case useCustomBackground
+    case backgroundHexColor
+    case useTransparentBackground
+  }
+
+  public init(from decoder: Decoder) throws {
+    let container = try decoder.container(keyedBy: CodingKeys.self)
+    useCustomBackground = (try? container.decodeIfPresent(Bool.self, forKey: .useCustomBackground)) ?? false
+    let decodedBackground = (try? container.decodeIfPresent(String.self, forKey: .backgroundHexColor)) ?? nil
+    backgroundHexColor = normalizeHexColor(decodedBackground)
+    useTransparentBackground = (try? container.decodeIfPresent(Bool.self, forKey: .useTransparentBackground)) ?? false
+  }
+
+  public func encode(to encoder: Encoder) throws {
+    var container = encoder.container(keyedBy: CodingKeys.self)
+    try container.encode(useCustomBackground, forKey: .useCustomBackground)
+    try container.encodeIfPresent(backgroundHexColor, forKey: .backgroundHexColor)
+    try container.encode(useTransparentBackground, forKey: .useTransparentBackground)
+  }
+
+  public static var `default`: WidgetBackgroundOverride {
+    WidgetBackgroundOverride()
+  }
+}
+
+public struct WidgetBackgroundSettings: Codable, Hashable, Sendable {
+  public var dashboard: WidgetBackgroundOverride
+  public var trend: WidgetBackgroundOverride
+
+  public init(
+    dashboard: WidgetBackgroundOverride = .default,
+    trend: WidgetBackgroundOverride = .default
+  ) {
+    self.dashboard = dashboard
+    self.trend = trend
+  }
+
+  private enum CodingKeys: String, CodingKey {
+    case dashboard
+    case trend
+  }
+
+  public init(from decoder: Decoder) throws {
+    let container = try decoder.container(keyedBy: CodingKeys.self)
+    dashboard = (try? container.decodeIfPresent(WidgetBackgroundOverride.self, forKey: .dashboard)) ?? .default
+    trend = (try? container.decodeIfPresent(WidgetBackgroundOverride.self, forKey: .trend)) ?? .default
+  }
+
+  public func encode(to encoder: Encoder) throws {
+    var container = encoder.container(keyedBy: CodingKeys.self)
+    try container.encode(dashboard, forKey: .dashboard)
+    try container.encode(trend, forKey: .trend)
+  }
+
+  public static var `default`: WidgetBackgroundSettings {
+    WidgetBackgroundSettings()
+  }
+}
+
 public struct WidgetVisibilitySettings: Codable, Hashable, Sendable {
   public var showTimestamp: Bool
   public var showFailureCount: Bool
   public var showResetInfo: Bool
   public var showOverviewMetricSummary: Bool
   public var showPercentageValues: Bool
+  public var showDualLimitPercentagesInDashboard: Bool
   public var showMediumProgressBars: Bool
+  public var smallDashboardProviderLimit: Int
   public var mediumProviderLimit: Int
   public var trendHistoryDays: Int
 
@@ -611,7 +688,9 @@ public struct WidgetVisibilitySettings: Codable, Hashable, Sendable {
     showResetInfo: Bool = true,
     showOverviewMetricSummary: Bool = true,
     showPercentageValues: Bool = true,
+    showDualLimitPercentagesInDashboard: Bool = true,
     showMediumProgressBars: Bool = true,
+    smallDashboardProviderLimit: Int = 2,
     mediumProviderLimit: Int = 6,
     trendHistoryDays: Int = 7
   ) {
@@ -620,7 +699,9 @@ public struct WidgetVisibilitySettings: Codable, Hashable, Sendable {
     self.showResetInfo = showResetInfo
     self.showOverviewMetricSummary = showOverviewMetricSummary
     self.showPercentageValues = showPercentageValues
+    self.showDualLimitPercentagesInDashboard = showDualLimitPercentagesInDashboard
     self.showMediumProgressBars = showMediumProgressBars
+    self.smallDashboardProviderLimit = Self.clampSmallProviderLimit(smallDashboardProviderLimit)
     self.mediumProviderLimit = Self.clampMediumProviderLimit(mediumProviderLimit)
     self.trendHistoryDays = Self.clampTrendHistoryDays(trendHistoryDays)
   }
@@ -635,7 +716,9 @@ public struct WidgetVisibilitySettings: Codable, Hashable, Sendable {
     case showResetInfo
     case showOverviewMetricSummary
     case showPercentageValues
+    case showDualLimitPercentagesInDashboard
     case showMediumProgressBars
+    case smallDashboardProviderLimit
     case mediumProviderLimit
     case trendHistoryDays
   }
@@ -648,7 +731,10 @@ public struct WidgetVisibilitySettings: Codable, Hashable, Sendable {
     showResetInfo = (try? container.decodeIfPresent(Bool.self, forKey: .showResetInfo)) ?? true
     showOverviewMetricSummary = (try? container.decodeIfPresent(Bool.self, forKey: .showOverviewMetricSummary)) ?? true
     showPercentageValues = (try? container.decodeIfPresent(Bool.self, forKey: .showPercentageValues)) ?? true
+    showDualLimitPercentagesInDashboard = (try? container.decodeIfPresent(Bool.self, forKey: .showDualLimitPercentagesInDashboard)) ?? true
     showMediumProgressBars = (try? container.decodeIfPresent(Bool.self, forKey: .showMediumProgressBars)) ?? true
+    let decodedSmallProviderLimit = (try? container.decodeIfPresent(Int.self, forKey: .smallDashboardProviderLimit)) ?? 2
+    smallDashboardProviderLimit = Self.clampSmallProviderLimit(decodedSmallProviderLimit)
     let decodedProviderLimit = (try? container.decodeIfPresent(Int.self, forKey: .mediumProviderLimit)) ?? 6
     mediumProviderLimit = Self.clampMediumProviderLimit(decodedProviderLimit)
     let decodedTrendDays = (try? container.decodeIfPresent(Int.self, forKey: .trendHistoryDays)) ?? 7
@@ -662,9 +748,15 @@ public struct WidgetVisibilitySettings: Codable, Hashable, Sendable {
     try container.encode(showResetInfo, forKey: .showResetInfo)
     try container.encode(showOverviewMetricSummary, forKey: .showOverviewMetricSummary)
     try container.encode(showPercentageValues, forKey: .showPercentageValues)
+    try container.encode(showDualLimitPercentagesInDashboard, forKey: .showDualLimitPercentagesInDashboard)
     try container.encode(showMediumProgressBars, forKey: .showMediumProgressBars)
+    try container.encode(Self.clampSmallProviderLimit(smallDashboardProviderLimit), forKey: .smallDashboardProviderLimit)
     try container.encode(Self.clampMediumProviderLimit(mediumProviderLimit), forKey: .mediumProviderLimit)
     try container.encode(Self.clampTrendHistoryDays(trendHistoryDays), forKey: .trendHistoryDays)
+  }
+
+  private static func clampSmallProviderLimit(_ value: Int) -> Int {
+    max(1, min(4, value))
   }
 
   private static func clampMediumProviderLimit(_ value: Int) -> Int {
@@ -680,6 +772,7 @@ public struct AppSettings: Codable, Hashable, Sendable {
   public var refreshIntervalMinutes: Int
   public var providers: [ProviderSettings]
   public var widgetStyle: WidgetStyleSettings
+  public var widgetBackgroundSettings: WidgetBackgroundSettings
   public var providerStyleSettings: [ProviderStyleSettings]
   public var widgetVisibility: WidgetVisibilitySettings
 
@@ -687,12 +780,14 @@ public struct AppSettings: Codable, Hashable, Sendable {
     refreshIntervalMinutes: Int = 30,
     providers: [ProviderSettings],
     widgetStyle: WidgetStyleSettings = .default,
+    widgetBackgroundSettings: WidgetBackgroundSettings = .default,
     providerStyleSettings: [ProviderStyleSettings] = [],
     widgetVisibility: WidgetVisibilitySettings = .default
   ) {
     self.refreshIntervalMinutes = refreshIntervalMinutes
     self.providers = AppSettings.normalizedProviderSettings(providers)
     self.widgetStyle = widgetStyle
+    self.widgetBackgroundSettings = widgetBackgroundSettings
     self.providerStyleSettings = AppSettings.normalizedProviderStyleSettings(
       providerStyleSettings.isEmpty ? AppSettings.defaultProviderStyleSettings() : providerStyleSettings,
       fallbackStyle: widgetStyle
@@ -705,6 +800,7 @@ public struct AppSettings: Codable, Hashable, Sendable {
       refreshIntervalMinutes: 30,
       providers: QuotaProvider.allCases.map { ProviderSettings(provider: $0, isEnabled: true) },
       widgetStyle: .default,
+      widgetBackgroundSettings: .default,
       providerStyleSettings: defaultProviderStyleSettings(),
       widgetVisibility: .default
     )
@@ -723,6 +819,7 @@ public struct AppSettings: Codable, Hashable, Sendable {
     case refreshIntervalMinutes
     case providers
     case widgetStyle
+    case widgetBackgroundSettings
     case providerStyleSettings
     case widgetVisibility
   }
@@ -737,6 +834,10 @@ public struct AppSettings: Codable, Hashable, Sendable {
     providers = AppSettings.normalizedProviderSettings(decodedProviders)
 
     widgetStyle = (try? container.decodeIfPresent(WidgetStyleSettings.self, forKey: .widgetStyle)) ?? .default
+    widgetBackgroundSettings = (try? container.decodeIfPresent(
+      WidgetBackgroundSettings.self,
+      forKey: .widgetBackgroundSettings
+    )) ?? .default
 
     let decodedStyleSettings = (try? container.decodeIfPresent(
       [ProviderStyleSettings].self,
@@ -755,6 +856,7 @@ public struct AppSettings: Codable, Hashable, Sendable {
     try container.encode(refreshIntervalMinutes, forKey: .refreshIntervalMinutes)
     try container.encode(providers, forKey: .providers)
     try container.encode(widgetStyle, forKey: .widgetStyle)
+    try container.encode(widgetBackgroundSettings, forKey: .widgetBackgroundSettings)
     try container.encode(providerStyleSettings, forKey: .providerStyleSettings)
     try container.encode(widgetVisibility, forKey: .widgetVisibility)
   }
