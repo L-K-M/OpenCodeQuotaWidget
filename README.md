@@ -1,5 +1,7 @@
 # OpenCodeQuota macOS Widget
 
+![Screenshot](./screenshot.png)
+
 macOS desktop widget for opencode that shows AI account quota usage for:
 
 - OpenAI

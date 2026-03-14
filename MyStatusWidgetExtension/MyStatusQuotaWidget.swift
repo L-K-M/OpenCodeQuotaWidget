@@ -513,7 +513,11 @@ private struct CompactProviderUsageRow: View {
 
   var body: some View {
     let metric = dashboardPrimaryMetric(for: usage)
+    let dualStops = dashboardBarStops(for: usage)
     let dualPercent = showDualLimitPercentages ? dualLimitPercentText(for: usage) : nil
+    let percentDisplay = dualPercent ?? dashboardPercentDisplayText(for: usage)
+    let basePercent = metric?.remainingPercent ?? providerRemainingPercent(for: usage)
+    let unlimited = metric?.isUnlimited ?? usage.metrics.contains(where: \.isUnlimited)
 
     HStack(spacing: 6) {
       Text(shortName)
@@ -523,9 +527,11 @@ private struct CompactProviderUsageRow: View {
 
       if showProgressBar {
         MiniProgressBar(
-          percent: metric?.remainingPercent,
-          unlimited: metric?.isUnlimited ?? false,
-          ringColors: ringColors
+          percent: basePercent,
+          unlimited: unlimited,
+          ringColors: ringColors,
+          dualStops: dualStops,
+          showDualStops: showDualLimitPercentages
         )
           .frame(height: 5)
       } else {
@@ -533,10 +539,12 @@ private struct CompactProviderUsageRow: View {
       }
 
       if showPercentages {
-        Text(dualPercent ?? percentText(for: metric))
+        Text(percentDisplay ?? percentText(for: metric))
           .font(.caption2.weight(.semibold))
           .monospacedDigit()
-          .frame(width: dualPercent == nil ? 36 : 60, alignment: .trailing)
+          .lineLimit(1)
+          .minimumScaleFactor(0.8)
+          .frame(width: dualPercent == nil ? 40 : 72, alignment: .trailing)
       }
     }
   }
@@ -643,27 +651,67 @@ private struct MiniProgressBar: View {
   let percent: Int?
   let unlimited: Bool
   let ringColors: WidgetRingColors
+  let dualStops: [DashboardBarStop]
+  let showDualStops: Bool
 
   var body: some View {
     GeometryReader { proxy in
       let width = max(0, proxy.size.width)
+      let clampedPercent = max(0, min(100, percent ?? 0))
+      let twoStops = dualStops.prefix(2)
+
       ZStack(alignment: .leading) {
         Capsule()
           .fill(Color.white.opacity(0.16))
 
         if unlimited {
           Capsule().fill(unlimitedColor(for: ringColors, layer: .outer))
+        } else if showDualStops, twoStops.count >= 2 {
+          ForEach(Array(twoStops).sorted(by: { $0.percent > $1.percent })) { stop in
+            Capsule()
+              .fill(ringColor(for: stop.percent, colors: ringColors, layer: stop.layer).opacity(stop.layer == .inner ? 0.55 : 0.82))
+              .frame(width: width * CGFloat(stop.percent) / 100.0)
+          }
+
+          ForEach(Array(twoStops)) { stop in
+            Capsule()
+              .fill(ringColor(for: stop.percent, colors: ringColors, layer: stop.layer))
+              .frame(width: 2.5)
+              .position(
+                x: markerPositionX(for: stop.percent, width: width),
+                y: proxy.size.height / 2
+              )
+          }
         } else {
           Capsule()
             .fill(progressColor)
-            .frame(width: width * CGFloat(percent ?? 0) / 100.0)
+            .frame(width: width * CGFloat(clampedPercent) / 100.0)
         }
       }
     }
   }
 
+  private func markerPositionX(for percent: Int, width: CGFloat) -> CGFloat {
+    let markerWidth: CGFloat = 2.5
+    guard width > markerWidth else {
+      return width / 2
+    }
+    let normalized = CGFloat(max(0, min(100, percent))) / 100.0
+    let x = width * normalized
+    return max(markerWidth / 2, min(width - markerWidth / 2, x))
+  }
+
   private var progressColor: Color {
     ringColor(for: percent ?? 0, colors: ringColors, layer: .outer)
+  }
+}
+
+private struct DashboardBarStop: Identifiable {
+  let layer: WidgetRingLayer
+  let percent: Int
+
+  var id: String {
+    "\(layer.rawValue)-\(percent)"
   }
 }
 
@@ -708,17 +756,47 @@ private func providerRemainingPercent(for usage: ProviderUsage) -> Int? {
   return nil
 }
 
+private func dashboardBarStops(for usage: ProviderUsage) -> [DashboardBarStop] {
+  let metrics = chartMetrics(for: usage)
+  var stops: [DashboardBarStop] = []
+
+  if let first = metrics.first, !first.isUnlimited, let remaining = first.remainingPercent {
+    stops.append(DashboardBarStop(layer: .outer, percent: max(0, min(100, remaining))))
+  }
+
+  if let second = metrics.dropFirst().first, !second.isUnlimited, let remaining = second.remainingPercent {
+    stops.append(DashboardBarStop(layer: .inner, percent: max(0, min(100, remaining))))
+  }
+
+  return stops
+}
+
 private func dualLimitPercentText(for usage: ProviderUsage) -> String? {
-  let boundedPercentages = usage.metrics
-    .filter { !$0.isUnlimited }
-    .compactMap(\.remainingPercent)
-    .map { max(0, min(100, $0)) }
+  let boundedPercentages = dashboardBarStops(for: usage)
+    .map(\.percent)
+    .sorted()
 
   guard boundedPercentages.count >= 2 else {
     return nil
   }
 
-  return "\(boundedPercentages[0])%/\(boundedPercentages[1])%"
+  return "\(boundedPercentages[0])% / \(boundedPercentages[1])%"
+}
+
+private func dashboardPercentDisplayText(for usage: ProviderUsage) -> String? {
+  let boundedPercentages = dashboardBarStops(for: usage)
+    .map(\.percent)
+    .sorted()
+
+  if let worst = boundedPercentages.first {
+    return "\(worst)%"
+  }
+
+  if usage.metrics.contains(where: \.isUnlimited) {
+    return "INF"
+  }
+
+  return nil
 }
 
 private func chartMetrics(for usage: ProviderUsage) -> [UsageMetric] {
