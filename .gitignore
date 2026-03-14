@@ -12,3 +12,4 @@ build/
 # Secrets / local overrides
 *.local
 Secrets.plist
+.idea/
