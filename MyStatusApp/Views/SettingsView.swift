@@ -549,6 +549,14 @@ struct SettingsView: View {
 
     return ScrollView {
       VStack(alignment: .leading, spacing: 0) {
+        settingsRow(title: "Enabled") {
+          Toggle("", isOn: model.providerEnabledBinding(for: provider))
+            .labelsHidden()
+            .toggleStyle(.switch)
+        }
+
+        Divider()
+
         providerStatusRow(
           title: "Credentials",
           message: credentialsAvailable ? "Credentials available" : "Credentials unavailable",
@@ -749,7 +757,10 @@ struct SettingsView: View {
   }
 
   private func tabDotColor(for provider: QuotaProvider) -> Color {
-    model.isProviderAvailable(provider) ? .green : .red
+    guard model.isProviderEnabled(provider) else {
+      return .gray
+    }
+    return model.isProviderAvailable(provider) ? .green : .red
   }
 
   private func tabTitle(for provider: QuotaProvider) -> String {
