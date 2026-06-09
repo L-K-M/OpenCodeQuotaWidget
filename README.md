@@ -9,7 +9,6 @@ macOS desktop widget for OpenCode that shows AI account quota usage for:
 - Z.ai (`https://api.z.ai/api/monitor/usage/quota/limit`)
 - Google Cloud (Antigravity)
 - GitHub Copilot
-- GitHub Copilot
 
 > [!IMPORTANT]
 > LLM Disclosure: Much of this code base was written with the help of large language models — AI coding agents working from the [`AGENTS.md`](AGENTS.md) brief in this repo.
