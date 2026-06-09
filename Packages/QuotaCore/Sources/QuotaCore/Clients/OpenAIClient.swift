@@ -98,7 +98,7 @@ public struct OpenAIClient: QuotaProviderClient {
 }
 
 private struct OpenAIUsageResponse: Decodable {
-  let plan_type: String
+  let plan_type: String?
   let rate_limit: RateLimitContainer?
 }
 
