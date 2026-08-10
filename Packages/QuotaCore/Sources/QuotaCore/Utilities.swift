@@ -43,7 +43,7 @@ func parseNumeric(_ value: Any?) -> Double? {
     let pattern = "^-?\\d+(?:\\.\\d+)?"
     guard
       let regex = try? NSRegularExpression(pattern: pattern),
-      let match = regex.firstMatch(in: normalized, range: NSRange(location: 0, length: normalized.count)),
+      let match = regex.firstMatch(in: normalized, range: NSRange(location: 0, length: normalized.utf16.count)),
       let range = Range(match.range, in: normalized)
     else {
       return nil
