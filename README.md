@@ -45,3 +45,21 @@ Or run:
 5. App Group identifier uses your signing team prefix: `$(TeamIdentifierPrefix)group.ch.lkmc.opencodequota` (must match both entitlements files and runtime resolution in `Shared/SharedConstants.swift`). See `AGENTS.md` for details on data flow and WidgetKit architecture.
 6. Run the `OpenCodeQuotaApp` target once, confirm OpenCode credentials are detected, then add the widget.
 7. If config files show sandbox permission errors, click `Grant File Access` and select your OpenCode's auth JSON file once.
+
+## Build
+
+Build the app from the command line:
+
+```bash
+./scripts/build.sh
+```
+
+This builds `OpenCodeQuota.app` (dev-signed with your team, so the embedded
+widget extension registers) and reveals it in Finder. Add `--clean` for a clean
+rebuild. It builds the committed `OpenCodeQuota.xcodeproj` as-is; run
+`./scripts/bootstrap.sh` only when you need to regenerate the project from
+`project.yml`.
+
+Local builds are signed with your team identity and run as-is. If you share or
+download a build, it is not notarized: after moving **OpenCodeQuota** to
+Applications, run `xattr -dr com.apple.quarantine "/Applications/OpenCodeQuota.app"`.
