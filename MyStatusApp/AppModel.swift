@@ -13,6 +13,7 @@ final class AppModel: ObservableObject {
   @Published var widgetBackgroundSettings: WidgetBackgroundSettings = .default
   @Published var widgetVisibility: WidgetVisibilitySettings = .default
   @Published var providerStyleSettings: [QuotaProvider: ProviderStyleSettings]
+  @Published var providerEnabled: [QuotaProvider: Bool]
   @Published var credentialStatuses: [ProviderCredentialStatus] = []
   @Published var authAccessGranted = false
   @Published var authAccessSummary = "OpenCode auth access not checked yet"
@@ -62,6 +63,9 @@ final class AppModel: ObservableObject {
         ($0, ProviderStyleSettings.defaultValue(for: $0))
       }
     )
+    self.providerEnabled = Dictionary(
+      uniqueKeysWithValues: QuotaProvider.allCases.map { ($0, true) }
+    )
 
     self.launchAtLogin = SMAppService.mainApp.status == .enabled
 
@@ -108,6 +112,11 @@ final class AppModel: ObservableObject {
         (provider, settings.styleOverride(for: provider))
       }
     )
+    providerEnabled = Dictionary(
+      uniqueKeysWithValues: QuotaProvider.allCases.map { provider in
+        (provider, settings.isEnabled(provider))
+      }
+    )
   }
 
   func saveConfiguration(showSuccessMessage: Bool = false) {
@@ -137,7 +146,7 @@ final class AppModel: ObservableObject {
     isRefreshing = true
     defer { isRefreshing = false }
 
-    let loaded = credentialLoader.load(providerEnabled: allProvidersEnabled())
+    let loaded = credentialLoader.load(providerEnabled: providerEnabled)
     credentialStatuses = loaded.statuses
     applyAuthAccess(loaded.authAccess)
 
@@ -175,7 +184,7 @@ final class AppModel: ObservableObject {
   }
 
   func reloadCredentialStatuses() {
-    let loaded = credentialLoader.load(providerEnabled: allProvidersEnabled())
+    let loaded = credentialLoader.load(providerEnabled: providerEnabled)
     credentialStatuses = loaded.statuses
     applyAuthAccess(loaded.authAccess)
   }
@@ -505,16 +514,29 @@ final class AppModel: ObservableObject {
     )
   }
 
+  func isProviderEnabled(_ provider: QuotaProvider) -> Bool {
+    providerEnabled[provider] ?? true
+  }
+
+  func providerEnabledBinding(for provider: QuotaProvider) -> Binding<Bool> {
+    Binding(
+      get: { self.isProviderEnabled(provider) },
+      set: { newValue in
+        self.providerEnabled[provider] = newValue
+        self.saveConfiguration()
+        Task {
+          await self.refreshNow()
+        }
+      }
+    )
+  }
+
   func status(for provider: QuotaProvider) -> ProviderCredentialStatus? {
     credentialStatuses.first(where: { $0.provider == provider })
   }
 
   func isProviderAvailable(_ provider: QuotaProvider) -> Bool {
     status(for: provider)?.available ?? false
-  }
-
-  private func allProvidersEnabled() -> [QuotaProvider: Bool] {
-    Dictionary(uniqueKeysWithValues: QuotaProvider.allCases.map { ($0, true) })
   }
 
   private func applyAuthAccess(_ status: OpenCodeAuthAccessStatus) {
@@ -563,7 +585,7 @@ final class AppModel: ObservableObject {
     AppSettings(
       refreshIntervalMinutes: refreshIntervalMinutes,
       providers: QuotaProvider.allCases.map {
-        ProviderSettings(provider: $0, isEnabled: true)
+        ProviderSettings(provider: $0, isEnabled: providerEnabled[$0] ?? true)
       },
       widgetStyle: widgetStyle,
       widgetBackgroundSettings: widgetBackgroundSettings,
