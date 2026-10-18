@@ -304,7 +304,7 @@ private struct OverviewSmallQuotaView: View {
         if entry.settings.widgetVisibility.showTimestamp, let snapshot = entry.snapshot {
           Text(snapshot.generatedAt, style: .time)
             .font(.caption2)
-            .foregroundStyle(.secondary)
+            .foregroundStyle(snapshotIsStale(entry: entry) ? Color.orange : Color.secondary)
         }
       }
 
@@ -407,7 +407,7 @@ private struct ProviderSmallQuotaView: View {
         }
 
         if entry.settings.widgetVisibility.showResetInfo {
-          let resetTimers = resetSummaries(for: metrics)
+          let resetTimers = resetSummaries(for: metrics, now: entry.date)
           if !resetTimers.isEmpty {
             Text(resetTimers.joined(separator: " • "))
               .monospacedDigit()
@@ -455,7 +455,7 @@ private struct MediumCompactQuotaView: View {
         if entry.settings.widgetVisibility.showTimestamp, let snapshot = entry.snapshot {
           Text(snapshot.generatedAt, style: .time)
             .font(.caption2)
-            .foregroundStyle(.secondary)
+            .foregroundStyle(snapshotIsStale(entry: entry) ? Color.orange : Color.secondary)
         }
       }
 
@@ -1010,6 +1010,15 @@ private func depletionWarnings(for series: [TrendSeries], now: Date) -> [TrendWa
   }
 }
 
+private func snapshotIsStale(entry: QuotaEntry) -> Bool {
+  guard let snapshot = entry.snapshot else {
+    return false
+  }
+
+  let interval = TimeInterval(max(15, entry.refreshIntervalMinutes) * 60)
+  return entry.date.timeIntervalSince(snapshot.generatedAt) >= interval * 2
+}
+
 private func compactProviderName(for provider: QuotaProvider) -> String {
   switch provider {
   case .openAI:
@@ -1025,16 +1034,19 @@ private func compactProviderName(for provider: QuotaProvider) -> String {
   }
 }
 
-private func resetSummaries(for metrics: [UsageMetric]) -> [String] {
+private func resetSummaries(for metrics: [UsageMetric], now: Date) -> [String] {
   metrics.compactMap { metric in
+    // Prefer resetAt so the countdown tracks the timeline entry date. The
+    // resetIn string was formatted at fetch time and goes stale, since
+    // WidgetKit archives every entry when the timeline is created.
+    if let resetAt = metric.resetAt {
+      let relative = relativeResetSummary(until: resetAt, now: now)
+      return relative.isEmpty ? nil : relative
+    }
+
     if let resetIn = metric.resetIn?.trimmingCharacters(in: .whitespacesAndNewlines), !resetIn.isEmpty {
       let normalized = normalizedResetSummary(resetIn)
       return normalized.isEmpty ? nil : normalized
-    }
-
-    if let resetAt = metric.resetAt {
-      let relative = relativeResetSummary(until: resetAt)
-      return relative.isEmpty ? nil : relative
     }
 
     return nil
@@ -1064,8 +1076,8 @@ private func normalizedResetSummary(_ rawValue: String) -> String {
   return value
 }
 
-private func relativeResetSummary(until date: Date) -> String {
-  let seconds = max(0, Int(date.timeIntervalSinceNow))
+private func relativeResetSummary(until date: Date, now: Date) -> String {
+  let seconds = max(0, Int(date.timeIntervalSince(now)))
   if seconds < 60 {
     return "<1m"
   }
