@@ -6,7 +6,9 @@ struct RefreshService {
   let snapshotStore: SnapshotStore
 
   func refresh(configurations: [ProviderRuntimeConfiguration]) async throws -> QuotaSnapshot {
-    let snapshot = await coordinator.refresh(configurations: configurations)
+    let previous = try? snapshotStore.load()
+    let fresh = await coordinator.refresh(configurations: configurations)
+    let snapshot = fresh.carryingForward(previous: previous)
     try snapshotStore.save(snapshot)
     return snapshot
   }
